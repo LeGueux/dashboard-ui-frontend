@@ -1,12 +1,40 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-    devtools: { enabled: true },
+  modules: [
+    '@nuxt/eslint',
+    '@nuxt/ui',
+    '@vueuse/nuxt'
+  ],
 
-    modules: [
-        '@nuxt/ui'
-    ],
+  devtools: {
+    enabled: true
+  },
 
-    css: ['~/assets/css/main.css'],
+  vite: {
+    optimizeDeps: {
+      include: [
+        '@vue/devtools-core',
+        '@vue/devtools-kit'
+      ]
+    }
+  },
 
-    compatibilityDate: '2025-07-16'
+  css: ['~/assets/css/main.css'],
+
+  routeRules: {
+    '/api/**': {
+      cors: true
+    }
+  },
+
+  compatibilityDate: '2024-07-11',
+
+  eslint: {
+    config: {
+      stylistic: {
+        commaDangle: 'never',
+        braceStyle: '1tbs'
+      }
+    }
+  }
 })
