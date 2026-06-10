@@ -48,7 +48,23 @@ function formatSpread(value?: number | string | null) {
   return `${(n * 100).toFixed(1)}¢`
 }
 
-const cards = computed(() => props.markets || [])
+function dedupeMarkets(markets: DustMarket[] = []) {
+  const unique = new Map<string, DustMarket>()
+
+  for (const market of markets) {
+    const key = [market.id ?? '', market.slug ?? '', market.airport ?? '', market.city ?? '', market.outcome ?? '', market.date ?? '', market.groupItemTitle ?? '']
+      .filter(Boolean)
+      .join('::')
+
+    if (!unique.has(key)) {
+      unique.set(key, market)
+    }
+  }
+
+  return Array.from(unique.values())
+}
+
+const cards = computed(() => dedupeMarkets(props.markets || []))
 </script>
 
 <template>

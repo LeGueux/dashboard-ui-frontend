@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { markets, loading, lastUpdated, source } = useDustMarkets()
+const { markets, loading, lastUpdated, source, status, lastSyncAt, error } = useDustMarkets()
 </script>
 
 <template>
@@ -7,18 +7,8 @@ const { markets, loading, lastUpdated, source } = useDustMarkets()
     <template #header>
       <UDashboardNavbar
         title="Polymarket Dust Dashboard"
-        :ui="{ title: 'text-white font-semibold tracking-wide', wrapper: 'bg-slate-950/90 border-b border-white/10' }"
+        :ui="{ title: 'text-white font-semibold tracking-wide' }"
       />
-
-      <UDashboardToolbar>
-        <template #left>
-          <div class="flex flex-wrap items-center gap-3">
-            <UBadge color="success" variant="subtle" class="rounded-full px-3 py-1">Bot ↔ Koyeb ↔ Vercel</UBadge>
-            <UBadge color="neutral" variant="subtle" class="rounded-full px-3 py-1">{{ markets.length }} markets actifs</UBadge>
-            <UBadge v-if="lastUpdated" color="primary" variant="subtle" class="rounded-full px-3 py-1">Dernière MAJ {{ lastUpdated }}</UBadge>
-          </div>
-        </template>
-      </UDashboardToolbar>
     </template>
 
     <template #body>
@@ -35,14 +25,14 @@ const { markets, loading, lastUpdated, source } = useDustMarkets()
 
             <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
               <UCard class="border border-white/10 bg-white/5" :ui="{ body: 'space-y-1' }">
-                <p class="text-[11px] uppercase tracking-[0.25em] text-emerald-300/80">Source</p>
-                <p class="text-base font-semibold text-white">{{ source }}</p>
-                <p class="text-xs text-slate-300">Lecture directe depuis le backend de synchronisation.</p>
+                <p class="text-[11px] uppercase tracking-[0.25em] text-emerald-300/80">Status</p>
+                <p class="text-base font-semibold text-white">{{ status === 'live' ? 'Live feed OK' : status === 'loading' ? 'Chargement…' : status === 'error' ? 'Erreur de connexion' : 'En attente' }}</p>
+                <p class="text-xs text-slate-300">Dernière synchronisation : {{ lastSyncAt || '—' }}</p>
               </UCard>
               <UCard class="border border-white/10 bg-white/5" :ui="{ body: 'space-y-1' }">
-                <p class="text-[11px] uppercase tracking-[0.25em] text-emerald-300/80">Refresh</p>
-                <p class="text-base font-semibold text-white">Auto-refresh 60s</p>
-                <p class="text-xs text-slate-300">Le feed reste aligné avec les dernières sélections du bot.</p>
+                <p class="text-[11px] uppercase tracking-[0.25em] text-emerald-300/80">Source</p>
+                <p class="text-base font-semibold text-white">{{ source }}</p>
+                <p class="text-xs text-slate-300">{{ error || 'Lecture directe depuis le backend de synchronisation.' }}</p>
               </UCard>
             </div>
           </div>

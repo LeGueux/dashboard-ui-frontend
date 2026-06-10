@@ -22,6 +22,22 @@ export interface DustFeedPayload {
   summary?: Record<string, unknown>
 }
 
+function dedupeMarkets(markets: DustMarket[] = []) {
+  const unique = new Map<string, DustMarket>()
+
+  for (const market of markets) {
+    const key = [market.id ?? '', market.slug ?? '', market.airport ?? '', market.city ?? '', market.outcome ?? '', market.date ?? '', market.groupItemTitle ?? '']
+      .filter(Boolean)
+      .join('::')
+
+    if (!unique.has(key)) {
+      unique.set(key, market)
+    }
+  }
+
+  return Array.from(unique.values())
+}
+
 export function useDustMarkets() {
   const config = useRuntimeConfig()
   const publicConfig = config.public as Record<string, unknown>
@@ -32,6 +48,8 @@ export function useDustMarkets() {
   const error = ref<string | null>(null)
   const lastUpdated = ref<string | null>(null)
   const source = ref('Koyeb ingest backend')
+  const status = ref<'idle' | 'loading' | 'live' | 'error'>('idle')
+  const lastSyncAt = ref<string | null>(null)
 
   async function loadFromBackend() {
     if (!ingestUrl) {
@@ -41,6 +59,7 @@ export function useDustMarkets() {
     }
 
     loading.value = true
+    status.value = 'loading'
     error.value = null
 
     try {
@@ -50,15 +69,18 @@ export function useDustMarkets() {
       }
 
       const payload = await stateRes.json() as DustFeedPayload
-      const nextMarkets = Array.isArray(payload?.markets) ? payload.markets : []
+      const nextMarkets = dedupeMarkets(Array.isArray(payload?.markets) ? payload.markets : [])
 
       markets.value = nextMarkets
       lastUpdated.value = payload.generatedAt || payload.summary?.generatedAtLocale as string || null
       source.value = payload.source || 'Koyeb ingest backend'
+      lastSyncAt.value = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      status.value = nextMarkets.length ? 'live' : 'idle'
       error.value = nextMarkets.length ? null : 'No dust market data available yet.'
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Unknown error'
       error.value = message
+      status.value = 'error'
       markets.value = []
     } finally {
       loading.value = false
@@ -67,11 +89,43 @@ export function useDustMarkets() {
 
   onMounted(() => {
     void loadFromBackend()
+
+    if (!ingestUrl) return
+
+    const sseUrl = new URL('/events', ingestUrl).toString()
+    const eventSource = typeof window !== 'undefined' ? new EventSource(sseUrl) : null
+
+    if (eventSource) {
+      eventSource.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data) as DustFeedPayload
+          const nextMarkets = dedupeMarkets(Array.isArray(payload?.markets) ? payload.markets : [])
+
+          markets.value = nextMarkets
+          lastUpdated.value = payload.generatedAt || payload.summary?.generatedAtLocale as string || null
+          source.value = payload.source || 'Koyeb ingest backend'
+          lastSyncAt.value = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+          loading.value = false
+          status.value = nextMarkets.length ? 'live' : 'idle'
+          error.value = nextMarkets.length ? null : 'No dust market data available yet.'
+        } catch (e) {
+          console.warn('Failed to parse SSE dust update', e)
+        }
+      }
+
+      eventSource.onerror = () => {
+        console.warn('SSE dust stream disconnected, falling back to polling')
+      }
+    }
+
     const interval = setInterval(() => {
       void loadFromBackend()
-    }, 60_000)
+    }, 10_000)
 
-    onBeforeUnmount(() => clearInterval(interval))
+    onBeforeUnmount(() => {
+      clearInterval(interval)
+      eventSource?.close()
+    })
   })
 
   return {
@@ -80,6 +134,8 @@ export function useDustMarkets() {
     error,
     lastUpdated,
     source,
+    status,
+    lastSyncAt,
     loadFromBackend
   }
 }
