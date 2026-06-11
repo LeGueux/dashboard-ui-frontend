@@ -17,8 +17,8 @@ useHead({
   }
 })
 
-const title = 'Nuxt Dashboard Template'
-const description = 'A professional dashboard template built with Nuxt UI, featuring multiple pages, data visualization, and comprehensive management capabilities for creating powerful admin interfaces.'
+const title = 'Dust Dashboard'
+const description = 'A dashboard to monitor your dust markets and receive notifications when they are active.'
 
 useSeoMeta({
   title,
