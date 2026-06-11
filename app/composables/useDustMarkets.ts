@@ -41,7 +41,7 @@ function dedupeMarkets(markets: DustMarket[] = []) {
 export function useDustMarkets() {
   const config = useRuntimeConfig()
   const publicConfig = config.public as Record<string, unknown>
-  const ingestUrl = (publicConfig.ingestBackendUrl || publicConfig.INGEST_BACKEND_URL || publicConfig.NUXT_PUBLIC_INGEST_BACKEND_URL) as string | undefined
+  const ingestUrl = (publicConfig.ingestBackendUrl || publicConfig.PUBLIC_BACKEND_URL) as string | undefined
 
   const markets = ref<DustMarket[]>([])
   const loading = ref(true)
