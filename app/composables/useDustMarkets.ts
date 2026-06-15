@@ -64,6 +64,16 @@ export function useDustMarkets() {
 
     try {
       const stateRes = await fetch(`${ingestUrl.replace(/\/$/, '')}/state`, { cache: 'no-store' })
+
+      // 204 = aucun état encore reçu par le bot — pas une erreur
+      if (stateRes.status === 204) {
+        markets.value = []
+        status.value = 'idle'
+        error.value = 'No dust market data available yet.'
+        loading.value = false
+        return
+      }
+
       if (!stateRes.ok) {
         throw new Error(`Unable to load state (${stateRes.status})`)
       }
