@@ -7,7 +7,7 @@ export interface DustMarket {
   date?: string | null
   groupItemTitle?: string | null
   link?: string | null
-  asks?: Array<{ price?: number | string; size?: number | string }>
+  asks?: { price?: number | string; size?: number | string }[]
   spread?: number | string | null
   currentPrice?: number | string | null
   bestAsk?: number | string | null
@@ -39,6 +39,7 @@ function dedupeMarkets(markets: DustMarket[] = []) {
 }
 
 export function useDustMarkets() {
+  const POLL_INTERVAL_MS = 5 * 60 * 1000
   const config = useRuntimeConfig()
   const publicConfig = config.public as Record<string, unknown>
   const ingestUrl = (publicConfig.ingestBackendUrl || publicConfig.PUBLIC_BACKEND_URL) as string | undefined
@@ -50,16 +51,21 @@ export function useDustMarkets() {
   const source = ref('Koyeb ingest backend')
   const status = ref<'idle' | 'loading' | 'live' | 'error'>('idle')
   const lastSyncAt = ref<string | null>(null)
+  const hasLoadedOnce = ref(false)
 
-  async function loadFromBackend() {
+  async function loadFromBackend(options?: { silent?: boolean }) {
+    const silent = !!options?.silent
+
     if (!ingestUrl) {
       error.value = 'INGEST_BACKEND_URL is not configured on the frontend.'
       loading.value = false
       return
     }
 
-    loading.value = true
-    status.value = 'loading'
+    if (!silent || !hasLoadedOnce.value) {
+      loading.value = true
+      status.value = 'loading'
+    }
     error.value = null
 
     try {
@@ -70,6 +76,7 @@ export function useDustMarkets() {
         markets.value = []
         status.value = 'idle'
         error.value = 'No dust market data available yet.'
+        hasLoadedOnce.value = true
         loading.value = false
         return
       }
@@ -87,6 +94,7 @@ export function useDustMarkets() {
       lastSyncAt.value = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       status.value = nextMarkets.length ? 'live' : 'idle'
       error.value = nextMarkets.length ? null : 'No dust market data available yet.'
+      hasLoadedOnce.value = true
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Unknown error'
       error.value = message
@@ -104,8 +112,26 @@ export function useDustMarkets() {
 
     const sseUrl = new URL('/events', ingestUrl).toString()
     const eventSource = typeof window !== 'undefined' ? new EventSource(sseUrl) : null
+    let interval: ReturnType<typeof setInterval> | null = null
+
+    const startPollingFallback = () => {
+      if (interval) return
+      interval = setInterval(() => {
+        void loadFromBackend({ silent: true })
+      }, POLL_INTERVAL_MS)
+    }
+
+    const stopPollingFallback = () => {
+      if (!interval) return
+      clearInterval(interval)
+      interval = null
+    }
 
     if (eventSource) {
+      eventSource.onopen = () => {
+        stopPollingFallback()
+      }
+
       eventSource.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data) as DustFeedPayload
@@ -124,16 +150,15 @@ export function useDustMarkets() {
       }
 
       eventSource.onerror = () => {
-        console.warn('SSE dust stream disconnected, falling back to polling')
+        console.warn('SSE dust stream disconnected, enabling polling fallback')
+        startPollingFallback()
       }
+    } else {
+      startPollingFallback()
     }
 
-    const interval = setInterval(() => {
-      void loadFromBackend()
-    }, 10_000)
-
     onBeforeUnmount(() => {
-      clearInterval(interval)
+      stopPollingFallback()
       eventSource?.close()
     })
   })
