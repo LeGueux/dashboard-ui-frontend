@@ -42,13 +42,13 @@ export function useDustMarkets() {
   const POLL_INTERVAL_MS = 5 * 60 * 1000
   const config = useRuntimeConfig()
   const publicConfig = config.public as Record<string, unknown>
-  const ingestUrl = (publicConfig.ingestBackendUrl || publicConfig.PUBLIC_BACKEND_URL) as string | undefined
+  const ingestUrl = (publicConfig.ingestBackendUrl || publicConfig.NUXT_PUBLIC_INGEST_BACKEND_URL) as string | undefined
 
   const markets = ref<DustMarket[]>([])
   const loading = ref(true)
   const error = ref<string | null>(null)
   const lastUpdated = ref<string | null>(null)
-  const source = ref('Koyeb ingest backend')
+  const source = ref('Ingest backend')
   const status = ref<'idle' | 'loading' | 'live' | 'error'>('idle')
   const lastSyncAt = ref<string | null>(null)
   const hasLoadedOnce = ref(false)
@@ -57,7 +57,7 @@ export function useDustMarkets() {
     const silent = !!options?.silent
 
     if (!ingestUrl) {
-      error.value = 'INGEST_BACKEND_URL is not configured on the frontend.'
+      error.value = 'NUXT_PUBLIC_INGEST_BACKEND_URL is not configured on the frontend.'
       loading.value = false
       return
     }
@@ -90,7 +90,7 @@ export function useDustMarkets() {
 
       markets.value = nextMarkets
       lastUpdated.value = payload.generatedAt || payload.summary?.generatedAtLocale as string || null
-      source.value = payload.source || 'Koyeb ingest backend'
+      source.value = payload.source || 'Ingest backend'
       lastSyncAt.value = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       status.value = nextMarkets.length ? 'live' : 'idle'
       error.value = nextMarkets.length ? null : 'No dust market data available yet.'
@@ -139,7 +139,7 @@ export function useDustMarkets() {
 
           markets.value = nextMarkets
           lastUpdated.value = payload.generatedAt || payload.summary?.generatedAtLocale as string || null
-          source.value = payload.source || 'Koyeb ingest backend'
+          source.value = payload.source || 'Ingest backend'
           lastSyncAt.value = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
           loading.value = false
           status.value = nextMarkets.length ? 'live' : 'idle'
