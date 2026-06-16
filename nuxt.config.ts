@@ -5,8 +5,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       ingestBackendUrl: '',
-      appVersion: pkg.version,
-      buildTime: new Date().toISOString()
+      appVersion: pkg.version
     }
   },
 

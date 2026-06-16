@@ -3,14 +3,6 @@ const { markets, loading, lastUpdated, source, status, lastSyncAt, error } = use
 
 const runtime = useRuntimeConfig()
 const appVersion = runtime.public.appVersion as string
-const buildTime = computed(() => {
-  const t = runtime.public.buildTime as string
-  if (!t) return ''
-  const d = new Date(t)
-  return Number.isNaN(d.getTime())
-    ? ''
-    : new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(d)
-})
 
 const statusLabel = computed(() => {
   if (status.value === 'live') return 'Live feed OK'
@@ -41,7 +33,7 @@ const statusTone = computed(() => {
             <p class="font-medium">{{ statusLabel }}</p>
             <div class="flex items-center gap-3 text-xs opacity-90">
               <span>Sync: {{ lastSyncAt || '—' }}</span>
-              <span class="font-mono tabular-nums">v{{ appVersion }}<span v-if="buildTime" class="opacity-70"> · {{ buildTime }}</span></span>
+              <span class="font-mono tabular-nums">v{{ appVersion }}</span>
             </div>
           </div>
         </div>
