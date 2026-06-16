@@ -1,6 +1,17 @@
 <script setup lang="ts">
 const { markets, loading, lastUpdated, source, status, lastSyncAt, error } = useDustMarkets()
 
+const runtime = useRuntimeConfig()
+const appVersion = runtime.public.appVersion as string
+const buildTime = computed(() => {
+  const t = runtime.public.buildTime as string
+  if (!t) return ''
+  const d = new Date(t)
+  return Number.isNaN(d.getTime())
+    ? ''
+    : new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(d)
+})
+
 const statusLabel = computed(() => {
   if (status.value === 'live') return 'Live feed OK'
   if (status.value === 'loading') return 'Chargement...'
@@ -28,7 +39,10 @@ const statusTone = computed(() => {
         <div class="px-4 pb-0 sm:px-6">
           <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm" :class="statusTone">
             <p class="font-medium">{{ statusLabel }}</p>
-            <p class="text-xs opacity-90">Sync: {{ lastSyncAt || '—' }}</p>
+            <div class="flex items-center gap-3 text-xs opacity-90">
+              <span>Sync: {{ lastSyncAt || '—' }}</span>
+              <span class="font-mono tabular-nums">v{{ appVersion }}<span v-if="buildTime" class="opacity-70"> · {{ buildTime }}</span></span>
+            </div>
           </div>
         </div>
       </div>

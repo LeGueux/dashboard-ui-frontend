@@ -1,8 +1,12 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import pkg from './package.json'
+
 export default defineNuxtConfig({
   runtimeConfig: {
     public: {
-      ingestBackendUrl: ''
+      ingestBackendUrl: '',
+      appVersion: pkg.version,
+      buildTime: new Date().toISOString()
     }
   },
 

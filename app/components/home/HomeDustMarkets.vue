@@ -67,10 +67,12 @@ function formatFrDate(value?: string | null) {
 }
 
 // Horloge live (mise à jour chaque seconde, côté client uniquement)
-const now = ref<Date>(new Date())
+// now reste null au SSR pour garantir un rendu identique à l'hydratation client
+const now = ref<Date | null>(null)
 let clock: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
+  now.value = new Date()
   clock = setInterval(() => {
     now.value = new Date()
   }, 1000)
@@ -98,14 +100,14 @@ function tzParts(tz: string, date: Date) {
 
 // Heure locale courante de la ville (HH:MM)
 function cityTime(tz?: string | null, fallback?: string | null) {
-  if (!tz) return fallback || '—'
+  if (!tz || !now.value) return fallback || '—'
   const { h, m } = tzParts(tz, now.value)
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
 // Temps restant avant minuit dans le fuseau de la ville
 function timeToMidnight(tz?: string | null) {
-  if (!tz) return null
+  if (!tz || !now.value) return null
   const { h, m, s } = tzParts(tz, now.value)
   const remaining = 86400 - (h * 3600 + m * 60 + s)
   const hh = Math.floor(remaining / 3600)
