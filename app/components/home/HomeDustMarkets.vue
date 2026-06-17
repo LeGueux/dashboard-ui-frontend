@@ -228,7 +228,25 @@ interface CityGroup {
 type ViewMode = 'all' | 'quick' | 'conviction'
 
 const viewMode = ref<ViewMode>('all')
-const showCriteria = ref(false)
+
+const cInput = ref('')
+const fInput = ref('')
+
+const fFromC = computed(() => {
+  const raw = String(cInput.value ?? '').trim()
+  if (!raw) return ''
+  const c = Number(raw)
+  if (!Number.isFinite(c)) return ''
+  return ((c * 9) / 5 + 32).toFixed(1)
+})
+
+const cFromF = computed(() => {
+  const raw = String(fInput.value ?? '').trim()
+  if (!raw) return ''
+  const f = Number(raw)
+  if (!Number.isFinite(f)) return ''
+  return (((f - 32) * 5) / 9).toFixed(1)
+})
 
 function remainingSecondsForTimezone(tz?: string | null) {
   if (!tz || !now.value) return Number.POSITIVE_INFINITY
@@ -562,29 +580,48 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
           >High conviction</UButton>
         </div>
 
-        <div class="mt-2">
-          <UButton
-            size="xs"
-            color="neutral"
-            variant="soft"
-            :icon="showCriteria ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-            @click="showCriteria = !showCriteria"
-          >
-            {{ showCriteria ? 'Masquer les criteres' : 'Voir les criteres' }}
-          </UButton>
-        </div>
+        <details class="group mt-2 rounded-lg border border-white/10 bg-black/15">
+          <summary class="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-xs text-slate-200">
+            <span class="inline-flex items-center gap-1">
+              <UIcon name="i-lucide-sliders-horizontal" class="size-3.5" />
+              Aide & outils
+            </span>
+            <UIcon name="i-lucide-chevron-down" class="size-4 transition-transform group-open:rotate-180" />
+          </summary>
 
-        <div v-if="showCriteria" class="mt-2 rounded-lg border border-white/10 bg-black/15 p-2 text-[11px] text-slate-300">
-          <p class="font-semibold text-slate-200">Critères utilisés</p>
-          <div class="mt-1 flex flex-wrap gap-1.5">
-            <span class="inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-2 py-0.5 text-emerald-200">🟢 A: ≤ 2h avant minuit + ask ≤ 99.5¢ + profondeur top 3 asks ≥ 80</span>
-            <span class="inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-amber-200">🟠 B: ≤ 4h avant minuit + ask ≤ 99.8¢ + profondeur top 3 asks ≥ 30</span>
-            <span class="inline-flex items-center gap-1 rounded-full bg-rose-400/15 px-2 py-0.5 text-rose-200">🔴 C: le reste</span>
+          <div class="border-t border-white/10 p-3 text-xs text-slate-300">
+            <div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
+              <div class="rounded-md border border-white/10 bg-white/5 p-2.5">
+              <p class="font-semibold text-slate-100">Critères utilisés</p>
+              <div class="mt-2 flex flex-wrap gap-1.5">
+                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-2 py-0.5 text-emerald-200">🟢 A: ≤ 2h + ask ≤ 99.5¢ + profondeur ≥ 80</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-amber-200">🟠 B: ≤ 4h + ask ≤ 99.8¢ + profondeur ≥ 30</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-rose-400/15 px-2 py-0.5 text-rose-200">🔴 C: le reste</span>
+              </div>
+              <div class="mt-2 space-y-1">
+                <p class="text-slate-300"><span class="rounded bg-primary/15 px-1 py-0.5 text-primary">Tous</span>: affiche tous les marchés sans filtre.</p>
+                <p class="text-slate-300"><span class="rounded bg-amber-400/15 px-1 py-0.5 text-amber-200">Setup rapides</span>: ≤ 3h avant minuit ou ask ≤ 99.5¢.</p>
+                <p class="text-slate-300"><span class="rounded bg-emerald-400/15 px-1 py-0.5 text-emerald-200">High conviction</span>: affiche uniquement les marchés notés A.</p>
+                <p class="text-slate-300"><span class="rounded bg-violet-400/15 px-1 py-0.5 text-violet-200">Tri</span>: Yes/No, puis temps restant avant minuit, puis meilleur ask.</p>
+              </div>
+              </div>
+
+              <div class="space-y-2">
+                <div class="rounded-md border border-white/10 bg-white/5 p-2.5">
+                <p class="mb-1 text-slate-100">°C → °F</p>
+                <UInput v-model="cInput" size="xs" type="number" placeholder="°C" />
+                <p class="mt-1 text-slate-400">Résultat: <span class="font-semibold text-white">{{ fFromC ? `${fFromC} °F` : '—' }}</span></p>
+                </div>
+
+                <div class="rounded-md border border-white/10 bg-white/5 p-2.5">
+                <p class="mb-1 text-slate-100">°F → °C</p>
+                <UInput v-model="fInput" size="xs" type="number" placeholder="°F" />
+                <p class="mt-1 text-slate-400">Résultat: <span class="font-semibold text-white">{{ cFromF ? `${cFromF} °C` : '—' }}</span></p>
+                </div>
+              </div>
+            </div>
           </div>
-          <p class="mt-1 text-slate-400">Setup rapides: ≤ 3h avant minuit ou ask ≤ 99.5¢.</p>
-          <p class="text-slate-400">Tri marchés: Yes/No → temps restant avant minuit → meilleur ask.</p>
-          <p class="text-slate-400">Profondeur top 3 asks: somme des tailles des 3 meilleurs niveaux ask.</p>
-        </div>
+        </details>
       </div>
     </template>
 
