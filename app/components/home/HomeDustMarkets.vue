@@ -220,14 +220,89 @@ interface CityGroup {
   peakLabel: string | null
   localTime: string | null
   tz: string | null
+  minRemainingSeconds: number
+  urgentCount: number
   markets: DustMarket[]
+}
+
+type ViewMode = 'all' | 'quick' | 'conviction'
+
+const viewMode = ref<ViewMode>('all')
+const showCriteria = ref(false)
+
+function remainingSecondsForTimezone(tz?: string | null) {
+  if (!tz || !now.value) return Number.POSITIVE_INFINITY
+  const { h, m, s } = tzParts(tz, now.value)
+  return 86400 - (h * 3600 + m * 60 + s)
+}
+
+function spreadCents(market: DustMarket) {
+  if (market.displaySpread) {
+    const parsed = Number.parseFloat(String(market.displaySpread).replace(',', '.'))
+    if (Number.isFinite(parsed)) return parsed
+  }
+
+  const spreadValue = Number(market.spread ?? 0)
+  if (Number.isFinite(spreadValue) && spreadValue > 0) return spreadValue * 100
+  return Number.POSITIVE_INFINITY
+}
+
+function bestAskCents(market: DustMarket) {
+  const ask = Number(market.bestAsk ?? market.asks?.[0]?.price ?? Number.POSITIVE_INFINITY)
+  return Number.isFinite(ask) ? ask * 100 : Number.POSITIVE_INFINITY
+}
+
+function askDepthTop3(market: DustMarket) {
+  return (market.asks || [])
+    .slice(0, 3)
+    .reduce((acc, level) => acc + Number(level.size ?? 0), 0)
+}
+
+function marketGrade(market: DustMarket) {
+  const remaining = remainingSecondsForTimezone(market.airportData?.tz)
+  const ask = bestAskCents(market)
+  const depth = askDepthTop3(market)
+
+  if (remaining <= 2 * 3600 && ask <= 99.5 && depth >= 80) return { grade: 'A', emoji: '🟢', tone: 'text-emerald-200 bg-emerald-400/15' }
+  if (remaining <= 4 * 3600 && ask <= 99.8 && depth >= 30) return { grade: 'B', emoji: '🟠', tone: 'text-amber-200 bg-amber-400/15' }
+  return { grade: 'C', emoji: '🔴', tone: 'text-rose-200 bg-rose-400/15' }
+}
+
+function isQuickSetup(market: DustMarket) {
+  const remaining = remainingSecondsForTimezone(market.airportData?.tz)
+  return remaining <= 3 * 3600 || bestAskCents(market) <= 99.5
+}
+
+function isHighConviction(market: DustMarket) {
+  return marketGrade(market).grade === 'A'
+}
+
+function marketSort(a: DustMarket, b: DustMarket) {
+  const yesA = isYes(a.outcome) ? 0 : 1
+  const yesB = isYes(b.outcome) ? 0 : 1
+  if (yesA !== yesB) return yesA - yesB
+
+  const remainingA = remainingSecondsForTimezone(a.airportData?.tz)
+  const remainingB = remainingSecondsForTimezone(b.airportData?.tz)
+  if (remainingA !== remainingB) return remainingA - remainingB
+
+  const askA = bestAskCents(a)
+  const askB = bestAskCents(b)
+  if (askA !== askB) return askA - askB
+
+  return thresholdValue(a.groupItemTitle) - thresholdValue(b.groupItemTitle)
 }
 
 const groups = computed<CityGroup[]>(() => {
   const cards = dedupeMarkets(props.markets || [])
+  const filteredCards = cards.filter((market) => {
+    if (viewMode.value === 'quick') return isQuickSetup(market)
+    if (viewMode.value === 'conviction') return isHighConviction(market)
+    return true
+  })
   const map = new Map<string, CityGroup>()
 
-  for (const market of cards) {
+  for (const market of filteredCards) {
     const city = market.city || 'Ville inconnue'
     if (!map.has(city)) {
       map.set(city, {
@@ -236,16 +311,34 @@ const groups = computed<CityGroup[]>(() => {
         peakLabel: market.peakLabel || null,
         localTime: market.localTime || null,
         tz: market.airportData?.tz || null,
+        minRemainingSeconds: Number.POSITIVE_INFINITY,
+        urgentCount: 0,
         markets: []
       })
     }
-    map.get(city)!.markets.push(market)
+
+    const group = map.get(city)!
+    group.markets.push(market)
+
+    const remaining = remainingSecondsForTimezone(market.airportData?.tz)
+    if (remaining < group.minRemainingSeconds) group.minRemainingSeconds = remaining
+    if (remaining <= 3600) group.urgentCount += 1
   }
 
-  const list = Array.from(map.values()).sort((a, b) => a.city.localeCompare(b.city))
+  const list = Array.from(map.values()).sort((a, b) => {
+    if (a.minRemainingSeconds !== b.minRemainingSeconds) return a.minRemainingSeconds - b.minRemainingSeconds
+
+    const aBest = Math.min(...a.markets.map(bestAskCents))
+    const bBest = Math.min(...b.markets.map(bestAskCents))
+    if (aBest !== bBest) return aBest - bBest
+
+    return a.city.localeCompare(b.city)
+  })
+
   for (const group of list) {
-    group.markets.sort((a, b) => thresholdValue(a.groupItemTitle) - thresholdValue(b.groupItemTitle))
+    group.markets.sort(marketSort)
   }
+
   return list
 })
 
@@ -365,12 +458,9 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
     }]]
   }
 
-  return [[{
-    type: 'label',
-    label: `${links.length} lien${links.length > 1 ? 's' : ''}`
-  }], links.map((link) => ({
+  const makeLinkItem = (link: MarketLink): DropdownMenuItem => ({
     label: link.label,
-    icon: link.source === 'betmoar' ? 'i-lucide-link-2' : 'i-lucide-cloud',
+    icon: link.source === 'betmoar' ? 'i-lucide-chart-line' : link.source === 'polymarket' ? 'i-lucide-store' : 'i-lucide-cloud',
     children: [{
       label: 'Ouvrir dans un nouvel onglet',
       icon: 'i-lucide-external-link',
@@ -383,24 +473,117 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
         void copyLinkToClipboard(link)
       }
     }]
-  }))]
+  })
+
+  const marketLinks = links.filter(link => link.source === 'polymarket')
+  const analyticsLinks = links.filter(link => link.source === 'betmoar')
+  const weatherLinks = links.filter(link => link.source !== 'polymarket' && link.source !== 'betmoar')
+
+  const polymarket = marketLinks[0]
+
+  const actions: DropdownMenuItem[] = []
+
+  if (polymarket) {
+    actions.unshift({
+      label: 'Copier lien Polymarket',
+      icon: 'i-lucide-copy',
+      onSelect() {
+        void copyLinkToClipboard(polymarket)
+      }
+    })
+  }
+
+  const items: DropdownMenuItem[][] = [[{
+    type: 'label',
+    label: `${links.length} lien${links.length > 1 ? 's' : ''}`
+  }], actions]
+
+  if (marketLinks.length) {
+    items.push([{ type: 'label', label: 'Market' }])
+    items.push(marketLinks.map(makeLinkItem))
+  }
+
+  if (analyticsLinks.length) {
+    items.push([{ type: 'label', label: 'Analytics' }])
+    items.push(analyticsLinks.map(makeLinkItem))
+  }
+
+  if (weatherLinks.length) {
+    items.push([{ type: 'label', label: 'Weather' }])
+    items.push(weatherLinks.map(makeLinkItem))
+  }
+
+  return items
 }
 </script>
 
 <template>
   <UCard class="border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 shadow-xl shadow-slate-950/30">
     <template #header>
-      <div class="flex flex-col gap-2 border-b border-white/10 pb-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p class="text-[10px] uppercase tracking-[0.35em] text-emerald-300/80">Dust feed</p>
-          <h2 class="mt-1 text-xl font-semibold text-white">Markets sélectionnés</h2>
-          <p class="mt-1 text-xs text-slate-300">Vue compacte des opportunités dust envoyées par le bot.</p>
+      <div class="flex flex-col gap-2 border-b border-white/10 pb-3">
+        <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p class="text-[10px] uppercase tracking-[0.35em] text-emerald-300/80">Dust feed</p>
+            <h2 class="mt-1 text-xl font-semibold text-white">Markets sélectionnés</h2>
+            <p class="mt-1 text-xs text-slate-300">Vue compacte des opportunités dust envoyées par le bot.</p>
+          </div>
+
+          <div class="flex flex-wrap gap-2 text-xs text-slate-200">
+            <UBadge color="success" variant="subtle" class="rounded-full px-2.5 py-1">{{ count }} marchés</UBadge>
+            <UBadge color="neutral" variant="subtle" class="rounded-full px-2.5 py-1">{{ source }}</UBadge>
+            <UBadge v-if="lastUpdated" color="primary" variant="subtle" class="rounded-full px-2.5 py-1">Mis à jour le {{ formatFrDate(lastUpdated) }}</UBadge>
+          </div>
         </div>
 
-        <div class="flex flex-wrap gap-2 text-xs text-slate-200">
-          <UBadge color="success" variant="subtle" class="rounded-full px-2.5 py-1">{{ count }} marchés</UBadge>
-          <UBadge color="neutral" variant="subtle" class="rounded-full px-2.5 py-1">{{ source }}</UBadge>
-          <UBadge v-if="lastUpdated" color="primary" variant="subtle" class="rounded-full px-2.5 py-1">Mis à jour le {{ formatFrDate(lastUpdated) }}</UBadge>
+        <div class="mt-1 flex flex-wrap gap-1.5 text-xs">
+          <UButton
+            size="xs"
+            :color="viewMode === 'all' ? 'primary' : 'neutral'"
+            :variant="viewMode === 'all' ? 'solid' : 'soft'"
+            title="Affiche tous les marchés disponibles, sans filtre."
+            aria-label="Filtre Tous: affiche tous les marchés"
+            @click="viewMode = 'all'"
+          >Tous</UButton>
+          <UButton
+            size="xs"
+            :color="viewMode === 'quick' ? 'warning' : 'neutral'"
+            :variant="viewMode === 'quick' ? 'solid' : 'soft'"
+            title="Montre les setups les plus actionnables: proches de minuit ou avec prix attractif."
+            aria-label="Filtre Setup rapides: urgents ou prix attractif"
+            @click="viewMode = 'quick'"
+          >Setup rapides</UButton>
+          <UButton
+            size="xs"
+            :color="viewMode === 'conviction' ? 'success' : 'neutral'"
+            :variant="viewMode === 'conviction' ? 'solid' : 'soft'"
+            title="Montre uniquement les marchés notés A (forte conviction)."
+            aria-label="Filtre High conviction: marchés notés A"
+            @click="viewMode = 'conviction'"
+          >High conviction</UButton>
+        </div>
+
+        <div class="mt-2">
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="soft"
+            :icon="showCriteria ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+            @click="showCriteria = !showCriteria"
+          >
+            {{ showCriteria ? 'Masquer les criteres' : 'Voir les criteres' }}
+          </UButton>
+        </div>
+
+        <div v-if="showCriteria" class="mt-2 rounded-lg border border-white/10 bg-black/15 p-2 text-[11px] text-slate-300">
+          <p class="font-semibold text-slate-200">Critères utilisés</p>
+          <div class="mt-1 flex flex-wrap gap-1.5">
+            <span class="inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-2 py-0.5 text-emerald-200">🟢 A: ≤ 2h avant minuit + ask ≤ 99.5¢ + profondeur top 3 asks ≥ 80</span>
+            <span class="inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-amber-200">🟠 B: ≤ 4h avant minuit + ask ≤ 99.8¢ + profondeur top 3 asks ≥ 30</span>
+            <span class="inline-flex items-center gap-1 rounded-full bg-rose-400/15 px-2 py-0.5 text-rose-200">🔴 C: le reste</span>
+          </div>
+          <p class="mt-1 text-slate-400">Setup rapides: ≤ 3h avant minuit ou ask ≤ 99.5¢.</p>
+          <p class="text-slate-400">Tri marchés: Yes/No → temps restant avant minuit → meilleur ask.</p>
+          <p class="text-slate-400">Profondeur top 3 asks: somme des tailles des 3 meilleurs niveaux ask.</p>
         </div>
       </div>
     </template>
@@ -452,7 +635,10 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
                 <UIcon name="i-lucide-moon" class="-mt-0.5 mr-0.5 inline-block size-3" />minuit dans {{ timeToMidnight(group.tz)!.label }}
               </p>
             </div>
-            <UBadge color="neutral" variant="subtle" class="shrink-0 rounded-full">{{ group.markets.length }}</UBadge>
+            <div class="flex items-center gap-1.5">
+              <UBadge v-if="group.urgentCount > 0" color="warning" variant="subtle" class="shrink-0 rounded-full">⏳ {{ group.urgentCount }}</UBadge>
+              <UBadge color="neutral" variant="subtle" class="shrink-0 rounded-full">{{ group.markets.length }}</UBadge>
+            </div>
           </div>
         </button>
 
@@ -473,6 +659,9 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
                     ? 'bg-emerald-400/15 text-emerald-300'
                     : 'bg-rose-400/15 text-rose-300'"
                 >{{ market.outcome || '—' }}</span>
+                <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold" :class="marketGrade(market).tone">
+                  {{ marketGrade(market).emoji }} {{ marketGrade(market).grade }}
+                </span>
                 <h4 class="truncate text-sm font-semibold text-white">{{ market.groupItemTitle || 'Seuil' }}</h4>
               </div>
 

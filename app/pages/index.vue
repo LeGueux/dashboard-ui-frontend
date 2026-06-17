@@ -17,6 +17,13 @@ const statusTone = computed(() => {
   if (status.value === 'error') return 'text-rose-200 border-rose-300/30 bg-rose-300/10'
   return 'text-slate-200 border-white/15 bg-white/5'
 })
+
+const statusDotTone = computed(() => {
+  if (status.value === 'live') return 'bg-emerald-300'
+  if (status.value === 'loading') return 'bg-sky-300'
+  if (status.value === 'error') return 'bg-rose-300'
+  return 'bg-slate-300'
+})
 </script>
 
 <template>
@@ -26,17 +33,18 @@ const statusTone = computed(() => {
         <UDashboardNavbar
           title="Polymarket Dust Dashboard"
           :ui="{ title: 'text-white font-semibold tracking-wide' }"
-        />
-
-        <div class="px-4 pb-0 sm:px-6">
-          <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm" :class="statusTone">
-            <p class="font-medium">{{ statusLabel }}</p>
-            <div class="flex items-center gap-3 text-xs opacity-90">
-              <span>Sync: {{ lastSyncAt || '—' }}</span>
-              <span class="font-mono tabular-nums">v{{ appVersion }}</span>
+        >
+          <template #right>
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <span class="inline-flex items-center gap-1 rounded-full border px-2 py-1" :class="statusTone">
+                <span class="size-1.5 rounded-full" :class="statusDotTone" />
+                {{ statusLabel }}
+              </span>
+              <span class="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-slate-200">Sync: {{ lastSyncAt || '—' }}</span>
+              <span class="rounded-full border border-white/10 bg-white/5 px-2 py-1 font-mono tabular-nums text-slate-200">v{{ appVersion }}</span>
             </div>
-          </div>
-        </div>
+          </template>
+        </UDashboardNavbar>
       </div>
     </template>
 
