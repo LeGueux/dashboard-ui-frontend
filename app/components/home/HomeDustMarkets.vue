@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { DropdownMenuItem } from '@nuxt/ui'
+
 interface DustLevel {
   price?: number | string
   size?: number | string
@@ -25,7 +27,16 @@ interface DustMarket {
   displaySpread?: string | null
   localTime?: string | null
   peakLabel?: string | null
+  links?: MarketLink[] | null
+  betmoardLinks?: string | null
+  airportLinks?: string | null
   airportData?: { tz?: string | null } | null
+}
+
+interface MarketLink {
+  label: string
+  url: string
+  source?: string
 }
 
 const props = withDefaults(defineProps<{
@@ -41,6 +52,8 @@ const props = withDefaults(defineProps<{
   count: 0,
   source: 'Ingest backend'
 })
+
+const toast = useToast()
 
 function formatCents(value?: number | string | null) {
   const n = Number(value ?? 0)
@@ -252,6 +265,126 @@ function toggleCity(city: string) {
 function isCollapsed(city: string) {
   return collapsed.value.has(city)
 }
+
+function parseMarkdownLinks(raw: string, source: MarketLink['source']): MarketLink[] {
+  const links: MarketLink[] = []
+  const regex = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g
+  let match: RegExpExecArray | null = regex.exec(raw)
+
+  while (match) {
+    const label = match[1]
+    const url = match[2]
+
+    if (label && url) {
+      links.push({
+        label,
+        url,
+        source
+      })
+    }
+
+    match = regex.exec(raw)
+  }
+
+  return links
+}
+
+function getMarketLinks(market: DustMarket): MarketLink[] {
+  const marketUrl = typeof market.link === 'string' && market.link.trim() ? market.link.trim() : ''
+
+  if (Array.isArray(market.links) && market.links.length > 0) {
+    const baseLinks: MarketLink[] = marketUrl
+      ? [{ label: 'POLYMARKET', url: marketUrl, source: 'polymarket' }]
+      : []
+
+    const sanitized = market.links
+      .filter(link => !!link?.label && !!link?.url)
+      .map(link => ({
+        label: link.label,
+        url: link.url,
+        source: link.source || 'airport'
+      }))
+
+    const uniqueStructured = new Map<string, MarketLink>()
+    for (const link of [...baseLinks, ...sanitized]) {
+      if (!uniqueStructured.has(link.url)) {
+        uniqueStructured.set(link.url, link)
+      }
+    }
+
+    return Array.from(uniqueStructured.values())
+  }
+
+  const all = [
+    ...(marketUrl ? [{ label: 'POLYMARKET', url: marketUrl, source: 'polymarket' as const }] : []),
+    ...parseMarkdownLinks(market.betmoardLinks || '', 'betmoar'),
+    ...parseMarkdownLinks(market.airportLinks || '', 'airport')
+  ]
+
+  const unique = new Map<string, MarketLink>()
+  for (const link of all) {
+    if (!unique.has(link.url)) {
+      unique.set(link.url, link)
+    }
+  }
+
+  return Array.from(unique.values())
+}
+
+function hasMarketLinks(market: DustMarket) {
+  return getMarketLinks(market).length > 0
+}
+
+function linkCount(market: DustMarket) {
+  return getMarketLinks(market).length
+}
+
+async function copyLinkToClipboard(link: MarketLink) {
+  try {
+    await navigator.clipboard.writeText(link.url)
+    toast.add({
+      title: 'Lien copie',
+      description: `${link.label} ajoute au presse-papiers.`
+    })
+  } catch {
+    toast.add({
+      title: 'Copie impossible',
+      description: 'Le navigateur a bloque l\'acces au presse-papiers.',
+      color: 'error'
+    })
+  }
+}
+
+function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
+  const links = getMarketLinks(market)
+
+  if (!links.length) {
+    return [[{
+      type: 'label',
+      label: 'Aucun lien disponible'
+    }]]
+  }
+
+  return [[{
+    type: 'label',
+    label: `${links.length} lien${links.length > 1 ? 's' : ''}`
+  }], links.map((link) => ({
+    label: link.label,
+    icon: link.source === 'betmoar' ? 'i-lucide-link-2' : 'i-lucide-cloud',
+    children: [{
+      label: 'Ouvrir dans un nouvel onglet',
+      icon: 'i-lucide-external-link',
+      to: link.url,
+      target: '_blank'
+    }, {
+      label: 'Copier le lien',
+      icon: 'i-lucide-copy',
+      onSelect() {
+        void copyLinkToClipboard(link)
+      }
+    }]
+  }))]
+}
 </script>
 
 <template>
@@ -282,15 +415,15 @@ function isCollapsed(city: string) {
       Aucun market dust n’est encore disponible. Le bot Discord devra en envoyer pour alimenter cette vue.
     </div>
 
-    <div v-else class="grid grid-cols-1 items-start gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+    <div v-else class="grid grid-cols-1 items-start gap-2 sm:gap-3 lg:grid-cols-2 2xl:grid-cols-3">
       <section
         v-for="group in groups"
         :key="group.city"
-        class="overflow-hidden rounded-2xl border border-white/10 bg-white/5"
+        class="overflow-hidden rounded-xl border border-white/5 bg-white/5 sm:rounded-2xl sm:border-white/10"
       >
         <button
           type="button"
-          class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/5"
+          class="flex w-full items-center justify-between gap-2.5 px-3 py-2.5 text-left transition hover:bg-white/5 sm:gap-3 sm:px-4 sm:py-3"
           @click="toggleCity(group.city)"
         >
           <div class="flex min-w-0 items-center gap-3">
@@ -323,14 +456,14 @@ function isCollapsed(city: string) {
           </div>
         </button>
 
-        <div v-if="!isCollapsed(group.city)" class="space-y-2 border-t border-white/10 p-3">
+        <div v-if="!isCollapsed(group.city)" class="space-y-1.5 border-t border-white/5 p-2 sm:space-y-2 sm:border-white/10 sm:p-3">
           <article
             v-for="market in group.markets"
             :key="market.id || market.slug || `${market.city}-${market.groupItemTitle}-${market.outcome}`"
-            class="rounded-xl border p-3 transition"
+            class="rounded-lg border border-white/10 p-2.5 transition sm:rounded-xl sm:p-3"
             :class="isYes(market.outcome)
-              ? 'border-emerald-400/30 bg-emerald-400/5 hover:border-emerald-400/50'
-              : 'border-rose-400/30 bg-rose-400/5 hover:border-rose-400/50'"
+              ? 'bg-emerald-400/5 sm:border-emerald-400/30 sm:hover:border-emerald-400/50'
+              : 'bg-rose-400/5 sm:border-rose-400/30 sm:hover:border-rose-400/50'"
           >
             <div class="flex items-center justify-between gap-3">
               <div class="flex min-w-0 items-center gap-2">
@@ -350,18 +483,28 @@ function isCollapsed(city: string) {
                     ? 'bg-emerald-400/15 text-emerald-300'
                     : 'bg-rose-400/15 text-rose-300'"
                 >{{ formatCents(market.bestAsk) }}</span>
-                <a
-                  v-if="market.link"
-                  :href="market.link"
-                  target="_blank"
-                  rel="noreferrer"
-                  class="text-sky-300 hover:text-white"
-                >↗</a>
+
+                <UDropdownMenu
+                  v-if="hasMarketLinks(market)"
+                  :items="getLinkMenuItems(market)"
+                  :content="{ align: 'end', side: 'bottom', collisionPadding: 12 }"
+                  :ui="{ content: 'w-72' }"
+                >
+                  <UButton
+                    color="neutral"
+                    variant="soft"
+                    size="xs"
+                    icon="i-lucide-link-2"
+                    class="h-6 px-2 text-[10px]"
+                  >
+                    {{ linkCount(market) }}
+                  </UButton>
+                </UDropdownMenu>
               </div>
             </div>
 
             <!-- Order book : asks (rouge) en haut, séparateur, bids (vert) en bas -->
-            <div class="mt-2 overflow-hidden rounded-md">
+            <div class="mt-2 overflow-hidden rounded-md border border-white/5 sm:border-transparent">
               <!-- Asks (max 3) : meilleur ask juste au-dessus du séparateur -->
               <template v-if="orderBook(market).asks.length">
                 <div
@@ -381,7 +524,7 @@ function isCollapsed(city: string) {
               <div v-else class="px-2 py-1 text-[11px] italic text-slate-500">Pas d'asks</div>
 
               <!-- Séparateur bids / asks -->
-              <div class="my-0.5 flex items-center justify-between border-y border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-slate-500">
+              <div class="my-0.5 flex items-center justify-between border-y border-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-slate-500 sm:border-white/10">
                 <span>Bids</span>
                 <span v-if="market.displaySpread || market.spread">Spread {{ market.displaySpread || formatSpread(market.spread) }}</span>
                 <span>Asks</span>

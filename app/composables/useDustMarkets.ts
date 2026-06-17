@@ -8,9 +8,18 @@ export interface DustMarket {
   groupItemTitle?: string | null
   link?: string | null
   asks?: { price?: number | string; size?: number | string }[]
+  bids?: { price?: number | string; size?: number | string }[]
   spread?: number | string | null
   currentPrice?: number | string | null
   bestAsk?: number | string | null
+  bestBid?: number | string | null
+  displaySpread?: string | null
+  localTime?: string | null
+  peakLabel?: string | null
+  links?: { label: string; url: string; source?: string }[]
+  betmoardLinks?: string | null
+  airportLinks?: string | null
+  airportData?: { tz?: string | null } | null
 }
 
 export interface DustFeedPayload {
