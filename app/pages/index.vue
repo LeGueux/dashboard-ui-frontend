@@ -36,6 +36,15 @@ const statusDotTone = computed(() => {
         >
           <template #right>
             <div class="flex flex-wrap items-center gap-2 text-xs">
+              <UButton
+                to="/weather-links"
+                color="primary"
+                variant="soft"
+                size="xs"
+                icon="i-lucide-book-open"
+              >
+                Wiki meteo
+              </UButton>
               <span class="inline-flex items-center gap-1 rounded-full border px-2 py-1" :class="statusTone">
                 <span class="size-1.5 rounded-full" :class="statusDotTone" />
                 {{ statusLabel }}

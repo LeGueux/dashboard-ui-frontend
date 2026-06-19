@@ -19,7 +19,7 @@ export interface DustMarket {
   links?: { label: string; url: string; source?: string }[]
   betmoardLinks?: string | null
   airportLinks?: string | null
-  airportData?: { tz?: string | null } | null
+  airportData?: { tz?: string | null; ignoreForTrading?: boolean | null } | null
 }
 
 export interface DustFeedPayload {

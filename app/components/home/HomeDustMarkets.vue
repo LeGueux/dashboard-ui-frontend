@@ -30,7 +30,7 @@ interface DustMarket {
   links?: MarketLink[] | null
   betmoardLinks?: string | null
   airportLinks?: string | null
-  airportData?: { tz?: string | null } | null
+  airportData?: { tz?: string | null; ignoreForTrading?: boolean | null } | null
 }
 
 interface MarketLink {
@@ -536,7 +536,8 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
 </script>
 
 <template>
-  <UCard class="border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 shadow-xl shadow-slate-950/30">
+  <UCard
+    class="border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 shadow-xl shadow-slate-950/30">
     <template #header>
       <div class="flex flex-col gap-2 border-b border-white/10 pb-3">
         <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
@@ -549,35 +550,25 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
           <div class="flex flex-wrap gap-2 text-xs text-slate-200">
             <UBadge color="success" variant="subtle" class="rounded-full px-2.5 py-1">{{ count }} marchés</UBadge>
             <UBadge color="neutral" variant="subtle" class="rounded-full px-2.5 py-1">{{ source }}</UBadge>
-            <UBadge v-if="lastUpdated" color="primary" variant="subtle" class="rounded-full px-2.5 py-1">Mis à jour le {{ formatFrDate(lastUpdated) }}</UBadge>
+            <UBadge v-if="lastUpdated" color="primary" variant="subtle" class="rounded-full px-2.5 py-1">Mis à jour le
+              {{ formatFrDate(lastUpdated) }}</UBadge>
           </div>
         </div>
 
         <div class="mt-1 flex flex-wrap gap-1.5 text-xs">
-          <UButton
-            size="xs"
-            :color="viewMode === 'all' ? 'primary' : 'neutral'"
-            :variant="viewMode === 'all' ? 'solid' : 'soft'"
-            title="Affiche tous les marchés disponibles, sans filtre."
-            aria-label="Filtre Tous: affiche tous les marchés"
-            @click="viewMode = 'all'"
-          >Tous</UButton>
-          <UButton
-            size="xs"
-            :color="viewMode === 'quick' ? 'warning' : 'neutral'"
+          <UButton size="xs" :color="viewMode === 'all' ? 'primary' : 'neutral'"
+            :variant="viewMode === 'all' ? 'solid' : 'soft'" title="Affiche tous les marchés disponibles, sans filtre."
+            aria-label="Filtre Tous: affiche tous les marchés" @click="viewMode = 'all'">Tous</UButton>
+          <UButton size="xs" :color="viewMode === 'quick' ? 'warning' : 'neutral'"
             :variant="viewMode === 'quick' ? 'solid' : 'soft'"
             title="Montre les setups les plus actionnables: proches de minuit ou avec prix attractif."
-            aria-label="Filtre Setup rapides: urgents ou prix attractif"
-            @click="viewMode = 'quick'"
-          >Setup rapides</UButton>
-          <UButton
-            size="xs"
-            :color="viewMode === 'conviction' ? 'success' : 'neutral'"
+            aria-label="Filtre Setup rapides: urgents ou prix attractif" @click="viewMode = 'quick'">Setup rapides
+          </UButton>
+          <UButton size="xs" :color="viewMode === 'conviction' ? 'success' : 'neutral'"
             :variant="viewMode === 'conviction' ? 'solid' : 'soft'"
             title="Montre uniquement les marchés notés A (forte conviction)."
-            aria-label="Filtre High conviction: marchés notés A"
-            @click="viewMode = 'conviction'"
-          >High conviction</UButton>
+            aria-label="Filtre High conviction: marchés notés A" @click="viewMode = 'conviction'">High conviction
+          </UButton>
         </div>
 
         <details class="group mt-2 rounded-lg border border-white/10 bg-black/15">
@@ -592,31 +583,43 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
           <div class="border-t border-white/10 p-3 text-xs text-slate-300">
             <div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
               <div class="rounded-md border border-white/10 bg-white/5 p-2.5">
-              <p class="font-semibold text-slate-100">Critères utilisés</p>
-              <div class="mt-2 flex flex-wrap gap-1.5">
-                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-2 py-0.5 text-emerald-200">🟢 A: ≤ 2h + ask ≤ 99.5¢ + profondeur ≥ 80</span>
-                <span class="inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-amber-200">🟠 B: ≤ 4h + ask ≤ 99.8¢ + profondeur ≥ 30</span>
-                <span class="inline-flex items-center gap-1 rounded-full bg-rose-400/15 px-2 py-0.5 text-rose-200">🔴 C: le reste</span>
-              </div>
-              <div class="mt-2 space-y-1">
-                <p class="text-slate-300"><span class="rounded bg-primary/15 px-1 py-0.5 text-primary">Tous</span>: affiche tous les marchés sans filtre.</p>
-                <p class="text-slate-300"><span class="rounded bg-amber-400/15 px-1 py-0.5 text-amber-200">Setup rapides</span>: ≤ 3h avant minuit ou ask ≤ 99.5¢.</p>
-                <p class="text-slate-300"><span class="rounded bg-emerald-400/15 px-1 py-0.5 text-emerald-200">High conviction</span>: affiche uniquement les marchés notés A.</p>
-                <p class="text-slate-300"><span class="rounded bg-violet-400/15 px-1 py-0.5 text-violet-200">Tri</span>: Yes/No, puis temps restant avant minuit, puis meilleur ask.</p>
-              </div>
+                <p class="font-semibold text-slate-100">Critères utilisés</p>
+                <div class="mt-2 flex flex-wrap gap-1.5">
+                  <span
+                    class="inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-2 py-0.5 text-emerald-200">🟢
+                    A: ≤ 2h + ask ≤ 99.5¢ + profondeur ≥ 80</span>
+                  <span
+                    class="inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-amber-200">🟠 B:
+                    ≤ 4h + ask ≤ 99.8¢ + profondeur ≥ 30</span>
+                  <span class="inline-flex items-center gap-1 rounded-full bg-rose-400/15 px-2 py-0.5 text-rose-200">🔴
+                    C: le reste</span>
+                </div>
+                <div class="mt-2 space-y-1">
+                  <p class="text-slate-300"><span class="rounded bg-primary/15 px-1 py-0.5 text-primary">Tous</span>:
+                    affiche tous les marchés sans filtre.</p>
+                  <p class="text-slate-300"><span class="rounded bg-amber-400/15 px-1 py-0.5 text-amber-200">Setup
+                      rapides</span>: ≤ 3h avant minuit ou ask ≤ 99.5¢.</p>
+                  <p class="text-slate-300"><span class="rounded bg-emerald-400/15 px-1 py-0.5 text-emerald-200">High
+                      conviction</span>: affiche uniquement les marchés notés A.</p>
+                  <p class="text-slate-300"><span
+                      class="rounded bg-violet-400/15 px-1 py-0.5 text-violet-200">Tri</span>: Yes/No, puis temps
+                    restant avant minuit, puis meilleur ask.</p>
+                </div>
               </div>
 
               <div class="space-y-2">
                 <div class="rounded-md border border-white/10 bg-white/5 p-2.5">
-                <p class="mb-1 text-slate-100">°C → °F</p>
-                <UInput v-model="cInput" size="xs" type="number" placeholder="°C" />
-                <p class="mt-1 text-slate-400">Résultat: <span class="font-semibold text-white">{{ fFromC ? `${fFromC} °F` : '—' }}</span></p>
+                  <p class="mb-1 text-slate-100">°C → °F</p>
+                  <UInput v-model="cInput" size="xs" type="number" placeholder="°C" />
+                  <p class="mt-1 text-slate-400">Résultat: <span class="font-semibold text-white">{{ fFromC ? `${fFromC}
+                      °F` : '—' }}</span></p>
                 </div>
 
                 <div class="rounded-md border border-white/10 bg-white/5 p-2.5">
-                <p class="mb-1 text-slate-100">°F → °C</p>
-                <UInput v-model="fInput" size="xs" type="number" placeholder="°F" />
-                <p class="mt-1 text-slate-400">Résultat: <span class="font-semibold text-white">{{ cFromF ? `${cFromF} °C` : '—' }}</span></p>
+                  <p class="mb-1 text-slate-100">°F → °C</p>
+                  <UInput v-model="fInput" size="xs" type="number" placeholder="°F" />
+                  <p class="mt-1 text-slate-400">Résultat: <span class="font-semibold text-white">{{ cFromF ? `${cFromF}
+                      °C` : '—' }}</span></p>
                 </div>
               </div>
             </div>
@@ -625,36 +628,32 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
       </div>
     </template>
 
-    <div v-if="loading" class="flex items-center gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4 text-emerald-100">
+    <div v-if="loading"
+      class="flex items-center gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4 text-emerald-100">
       <UIcon name="i-lucide-loader-circle" class="size-5 animate-spin" />
       Chargement des markets dust…
     </div>
 
-    <div v-else-if="!groups.length" class="rounded-2xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-slate-300">
+    <div v-else-if="!groups.length"
+      class="rounded-2xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-slate-300">
       <UIcon name="i-lucide-sparkles" class="mx-auto mb-3 size-8 text-emerald-300" />
       Aucun market dust n’est encore disponible. Le bot Discord devra en envoyer pour alimenter cette vue.
     </div>
 
     <div v-else class="grid grid-cols-1 items-start gap-2 sm:gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-      <section
-        v-for="group in groups"
-        :key="group.city"
-        class="overflow-hidden rounded-xl border border-white/5 bg-white/5 sm:rounded-2xl sm:border-white/10"
-      >
-        <button
-          type="button"
+      <section v-for="group in groups" :key="group.city"
+        class="overflow-hidden rounded-xl border border-white/5 bg-white/5 sm:rounded-2xl sm:border-white/10">
+        <button type="button"
           class="flex w-full items-center justify-between gap-2.5 px-3 py-2.5 text-left transition hover:bg-white/5 sm:gap-3 sm:px-4 sm:py-3"
-          @click="toggleCity(group.city)"
-        >
+          @click="toggleCity(group.city)">
           <div class="flex min-w-0 items-center gap-3">
-            <UIcon
-              :name="isCollapsed(group.city) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
-              class="size-4 shrink-0 text-slate-400"
-            />
+            <UIcon :name="isCollapsed(group.city) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
+              class="size-4 shrink-0 text-slate-400" />
             <div class="min-w-0">
               <h3 class="truncate text-sm font-semibold text-white">
                 {{ group.city }}
-                <span v-if="group.airport" class="ml-1 text-[11px] font-normal text-slate-400">{{ group.airport }}</span>
+                <span v-if="group.airport" class="ml-1 text-[11px] font-normal text-slate-400">{{ group.airport
+                  }}</span>
               </h3>
               <p v-if="group.peakLabel" class="truncate text-[11px] text-slate-400">
                 Peak {{ group.peakLabel }}
@@ -663,25 +662,35 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
           </div>
           <div class="flex shrink-0 items-center gap-3">
             <div class="text-right leading-none">
-              <p class="font-mono text-lg font-bold tabular-nums text-white">{{ cityTime(group.tz, group.localTime) }}</p>
-              <p
-                v-if="timeToMidnight(group.tz)"
-                class="mt-0.5 text-[11px] font-medium tabular-nums"
-                :class="timeToMidnight(group.tz)!.urgent ? 'text-rose-300' : 'text-amber-300/80'"
-              >
-                <UIcon name="i-lucide-moon" class="-mt-0.5 mr-0.5 inline-block size-3" />minuit dans {{ timeToMidnight(group.tz)!.label }}
+              <p class="font-mono text-lg font-bold tabular-nums text-white">{{ cityTime(group.tz, group.localTime) }}
+              </p>
+              <p v-if="timeToMidnight(group.tz)" class="mt-0.5 text-[11px] font-medium tabular-nums"
+                :class="timeToMidnight(group.tz)!.urgent ? 'text-rose-300' : 'text-amber-300/80'">
+                <UIcon name="i-lucide-moon" class="-mt-0.5 mr-0.5 inline-block size-3" />minuit dans {{
+                  timeToMidnight(group.tz)!.label }}
               </p>
             </div>
             <div class="flex items-center gap-1.5">
-              <UBadge v-if="group.urgentCount > 0" color="warning" variant="subtle" class="shrink-0 rounded-full">⏳ {{ group.urgentCount }}</UBadge>
+              <UBadge v-if="group.urgentCount > 0" color="warning" variant="subtle" class="shrink-0 rounded-full">⏳ {{
+                group.urgentCount }}</UBadge>
               <UBadge color="neutral" variant="subtle" class="shrink-0 rounded-full">{{ group.markets.length }}</UBadge>
             </div>
           </div>
         </button>
 
-        <div v-if="!isCollapsed(group.city)" class="space-y-1.5 border-t border-white/5 p-2 sm:space-y-2 sm:border-white/10 sm:p-3">
-          <article
-            v-for="market in group.markets"
+        <div v-if="!isCollapsed(group.city)"
+          class="space-y-1.5 border-t border-white/5 p-2 sm:space-y-2 sm:border-white/10 sm:p-3">
+          <div
+            v-if="group.markets.some(m => m.airportData?.ignoreForTrading)"
+            class="rounded-lg border-l-4 border-amber-500 bg-amber-500/15 p-2.5 text-xs text-amber-200"
+          >
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-alert-triangle" class="size-4 flex-shrink-0" />
+              <span class="font-semibold">Ville marquée IGNORE FOR TRADING</span>
+            </div>
+          </div>
+
+          <article v-for="market in group.markets"
             :key="market.id || market.slug || `${market.city}-${market.groupItemTitle}-${market.outcome}`"
             class="rounded-lg border border-white/10 p-2.5 transition sm:rounded-xl sm:p-3"
             :class="isYes(market.outcome)
@@ -690,12 +699,9 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
           >
             <div class="flex items-center justify-between gap-3">
               <div class="flex min-w-0 items-center gap-2">
-                <span
-                  class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
-                  :class="isYes(market.outcome)
-                    ? 'bg-emerald-400/15 text-emerald-300'
-                    : 'bg-rose-400/15 text-rose-300'"
-                >{{ market.outcome || '—' }}</span>
+                <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider" :class="isYes(market.outcome)
+                  ? 'bg-emerald-400/15 text-emerald-300'
+                  : 'bg-rose-400/15 text-rose-300'">{{ market.outcome || '—' }}</span>
                 <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold" :class="marketGrade(market).tone">
                   {{ marketGrade(market).emoji }} {{ marketGrade(market).grade }}
                 </span>
@@ -703,26 +709,13 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
               </div>
 
               <div class="flex shrink-0 items-center gap-1.5 text-xs">
-                <span
-                  class="rounded-full px-2 py-0.5 font-semibold"
-                  :class="isYes(market.outcome)
-                    ? 'bg-emerald-400/15 text-emerald-300'
-                    : 'bg-rose-400/15 text-rose-300'"
-                >{{ formatCents(market.bestAsk) }}</span>
+                <span class="rounded-full px-2 py-0.5 font-semibold" :class="isYes(market.outcome)
+                  ? 'bg-emerald-400/15 text-emerald-300'
+                  : 'bg-rose-400/15 text-rose-300'">{{ formatCents(market.bestAsk) }}</span>
 
-                <UDropdownMenu
-                  v-if="hasMarketLinks(market)"
-                  :items="getLinkMenuItems(market)"
-                  :content="{ align: 'end', side: 'bottom', collisionPadding: 12 }"
-                  :ui="{ content: 'w-72' }"
-                >
-                  <UButton
-                    color="neutral"
-                    variant="soft"
-                    size="xs"
-                    icon="i-lucide-link-2"
-                    class="h-6 px-2 text-[10px]"
-                  >
+                <UDropdownMenu v-if="hasMarketLinks(market)" :items="getLinkMenuItems(market)"
+                  :content="{ align: 'end', side: 'bottom', collisionPadding: 12 }" :ui="{ content: 'w-72' }">
+                  <UButton color="neutral" variant="soft" size="xs" icon="i-lucide-link-2" class="h-6 px-2 text-[10px]">
                     {{ linkCount(market) }}
                   </UButton>
                 </UDropdownMenu>
@@ -733,43 +726,35 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
             <div class="mt-2 overflow-hidden rounded-md border border-white/5 sm:border-transparent">
               <!-- Asks (max 3) : meilleur ask juste au-dessus du séparateur -->
               <template v-if="orderBook(market).asks.length">
-                <div
-                  v-for="(level, i) in orderBook(market).asks"
-                  :key="`ask-${i}`"
-                  class="relative flex items-center px-2 py-1 text-[11px] tabular-nums"
-                >
-                  <span
-                    class="absolute inset-y-0 right-0 bg-rose-400/15"
-                    :style="{ width: `${level.depth}%` }"
-                  />
+                <div v-for="(level, i) in orderBook(market).asks" :key="`ask-${i}`"
+                  class="relative flex items-center px-2 py-1 text-[11px] tabular-nums">
+                  <span class="absolute inset-y-0 right-0 bg-rose-400/15" :style="{ width: `${level.depth}%` }" />
                   <span class="relative w-[28%] font-semibold text-rose-300">{{ formatCents(level.price) }}</span>
                   <span class="relative w-[36%] text-right text-slate-300">{{ formatShares(level.size) }}</span>
-                  <span class="relative w-[36%] text-right text-slate-400">{{ formatUsd(level.price, level.size) }}</span>
+                  <span class="relative w-[36%] text-right text-slate-400">{{ formatUsd(level.price, level.size)
+                    }}</span>
                 </div>
               </template>
               <div v-else class="px-2 py-1 text-[11px] italic text-slate-500">Pas d'asks</div>
 
               <!-- Séparateur bids / asks -->
-              <div class="my-0.5 flex items-center justify-between border-y border-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-slate-500 sm:border-white/10">
+              <div
+                class="my-0.5 flex items-center justify-between border-y border-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-slate-500 sm:border-white/10">
                 <span>Bids</span>
-                <span v-if="market.displaySpread || market.spread">Spread {{ market.displaySpread || formatSpread(market.spread) }}</span>
+                <span v-if="market.displaySpread || market.spread">Spread {{ market.displaySpread ||
+                  formatSpread(market.spread) }}</span>
                 <span>Asks</span>
               </div>
 
               <!-- Bids (max 3) : meilleur bid juste sous le séparateur -->
               <template v-if="orderBook(market).bids.length">
-                <div
-                  v-for="(level, i) in orderBook(market).bids"
-                  :key="`bid-${i}`"
-                  class="relative flex items-center px-2 py-1 text-[11px] tabular-nums"
-                >
-                  <span
-                    class="absolute inset-y-0 right-0 bg-emerald-400/15"
-                    :style="{ width: `${level.depth}%` }"
-                  />
+                <div v-for="(level, i) in orderBook(market).bids" :key="`bid-${i}`"
+                  class="relative flex items-center px-2 py-1 text-[11px] tabular-nums">
+                  <span class="absolute inset-y-0 right-0 bg-emerald-400/15" :style="{ width: `${level.depth}%` }" />
                   <span class="relative w-[28%] font-semibold text-emerald-300">{{ formatCents(level.price) }}</span>
                   <span class="relative w-[36%] text-right text-slate-300">{{ formatShares(level.size) }}</span>
-                  <span class="relative w-[36%] text-right text-slate-400">{{ formatUsd(level.price, level.size) }}</span>
+                  <span class="relative w-[36%] text-right text-slate-400">{{ formatUsd(level.price, level.size)
+                    }}</span>
                 </div>
               </template>
               <div v-else class="px-2 py-1 text-[11px] italic text-slate-500">No bids</div>
