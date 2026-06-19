@@ -253,7 +253,7 @@ const copyToClipboard = async (text: string) => {
             >
               Réinitialiser filtres
             </button>
-            <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-400">
+              <span class="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200">
               {{ activeFilteredLinks.length }} résultats
             </span>
           </div>
@@ -285,33 +285,33 @@ const copyToClipboard = async (text: string) => {
             </select>
 
             <!-- Heure trading max -->
-            <label class="flex items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-2 h-7 text-slate-300">
+            <label class="flex items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-2 h-7 text-slate-100">
               Trading ≤
-              <input v-model.number="filterTradingHourMax" type="number" min="0" max="24" class="w-12 bg-transparent text-slate-100 outline-none text-center" />
+              <input v-model.number="filterTradingHourMax" type="number" min="0" max="24" class="w-12 bg-transparent text-white outline-none text-center" />
               h
             </label>
 
             <!-- Heure dust max -->
-            <label class="flex items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-2 h-7 text-slate-300">
+            <label class="flex items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-2 h-7 text-slate-100">
               Dust ≤
-              <input v-model.number="filterDustHourMax" type="number" min="0" max="24" class="w-12 bg-transparent text-slate-100 outline-none text-center" />
+              <input v-model.number="filterDustHourMax" type="number" min="0" max="24" class="w-12 bg-transparent text-white outline-none text-center" />
               h
             </label>
 
             <!-- Filtres liens -->
-            <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasWU ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10'">
+            <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasWU ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-100 hover:bg-white/10'">
               <input v-model="filterHasWU" type="checkbox" class="sr-only" />
               WU
             </label>
-            <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasWETHR ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10'">
+            <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasWETHR ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-100 hover:bg-white/10'">
               <input v-model="filterHasWETHR" type="checkbox" class="sr-only" />
               WETHR
             </label>
-            <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasMETAR ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10'">
+            <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasMETAR ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-100 hover:bg-white/10'">
               <input v-model="filterHasMETAR" type="checkbox" class="sr-only" />
               METAR
             </label>
-            <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasNWS ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10'">
+            <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasNWS ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-100 hover:bg-white/10'">
               <input v-model="filterHasNWS" type="checkbox" class="sr-only" />
               NWS
             </label>
@@ -368,19 +368,19 @@ const copyToClipboard = async (text: string) => {
                 <span class="text-sm font-semibold text-sky-200">Heure locale {{ group.nowText }}</span>
               </div>
               <div class="flex items-center gap-2 text-xs">
-                <span class="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-slate-300">
+                <span class="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-slate-100">
                   {{ group.offsetText }}
                 </span>
                 <span class="rounded-full border border-sky-300/30 bg-sky-300/10 px-2 py-0.5 font-mono text-sky-100">
                   {{ group.nowText }}
                 </span>
-                <span class="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-slate-300">
+                <span class="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-slate-100">
                   {{ group.airports.length }} stations
                 </span>
               </div>
             </button>
 
-            <div class="px-4 pb-2 text-[11px] text-slate-400 border-t border-white/5" v-if="group.tzSummary">
+            <div class="px-4 pb-2 text-[11px] text-slate-300 border-t border-white/5" v-if="group.tzSummary">
               {{ group.tzSummary }}
             </div>
 
@@ -398,7 +398,7 @@ const copyToClipboard = async (text: string) => {
                       <div class="font-mono font-bold text-sm text-sky-300 leading-none">
                         {{ airport.code }}
                       </div>
-                      <div v-if="airport.city" class="text-xs text-slate-300 mt-0.5 truncate">
+                      <div v-if="airport.city" class="text-xs text-slate-100 mt-0.5 truncate">
                         {{ airport.city }}
                       </div>
                     </div>
@@ -409,13 +409,13 @@ const copyToClipboard = async (text: string) => {
 
                   <!-- Badges infos -->
                   <div class="flex flex-wrap gap-1 mb-2 text-[10px]">
-                    <span class="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-slate-400">
+                    <span class="rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-slate-200">
                       T {{ timeLabel(airport.airportData?.tradingMinLocalHour, airport.airportData?.tradingMinLocalMinute) }}
                     </span>
-                    <span class="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-slate-400">
+                    <span class="rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-slate-200">
                       D {{ timeLabel(airport.airportData?.dustMinLocalHour, airport.airportData?.dustMinLocalMinute) }}
                     </span>
-                    <span class="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-slate-400">
+                    <span class="rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-slate-200">
                       {{ airport.airportData?.unit || '-' }}
                     </span>
                     <span
@@ -434,7 +434,7 @@ const copyToClipboard = async (text: string) => {
                       :href="link.url"
                       target="_blank"
                       rel="noopener noreferrer"
-                      class="inline-flex items-center gap-1 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-colors"
+                      class="inline-flex items-center gap-1 rounded border border-white/20 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-white/75 hover:text-white hover:border-white/40 hover:bg-white/15 transition-colors"
                     >
                       {{ link.label }}
                       <UIcon name="i-lucide-external-link" class="size-2.5 shrink-0" />
