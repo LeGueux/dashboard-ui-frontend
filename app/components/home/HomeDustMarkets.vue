@@ -79,6 +79,24 @@ function formatFrDate(value?: string | null) {
   }).format(date)
 }
 
+function formatBetDateLabel(value?: string | null) {
+  if (!value) return null
+
+  const raw = String(value).trim()
+  if (!raw) return null
+
+  const parsed = new Date(raw)
+  if (!Number.isNaN(parsed.getTime())) {
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit',
+      month: '2-digit'
+    }).format(parsed)
+  }
+
+  const fallback = raw.replace(/\s+/g, ' ').trim()
+  return fallback || null
+}
+
 // Horloge live (mise à jour chaque seconde, côté client uniquement)
 // now reste null au SSR pour garantir un rendu identique à l'hydratation client
 const now = ref<Date | null>(null)
@@ -141,14 +159,53 @@ function formatSpread(value?: number | string | null) {
 function formatShares(value?: number | string | null) {
   const n = Number(value ?? 0)
   if (!Number.isFinite(n)) return '0'
-  return Math.round(n).toLocaleString('fr-FR')
+
+  if (Number.isInteger(n)) {
+    return n.toLocaleString('fr-FR')
+  }
+
+  return n.toLocaleString('fr-FR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })
 }
 
 function formatUsd(price?: number | string | null, size?: number | string | null) {
   const value = Number(price ?? 0) * Number(size ?? 0)
-  if (!Number.isFinite(value)) return '$0'
-  if (value >= 1000) return `$${(value / 1000).toFixed(1)}K`
-  return `$${value < 10 ? value.toFixed(1) : Math.round(value)}`
+  if (!Number.isFinite(value)) return '$0.00'
+
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value)
+}
+
+function netYieldAfterFeesValue(price?: number | string | null, size?: number | string | null) {
+  const p = Number(price ?? 0)
+  const shares = Number(size ?? 0)
+
+  if (!Number.isFinite(p) || !Number.isFinite(shares) || shares <= 0 || p <= 0 || p >= 1) {
+    return null
+  }
+
+  const feeRate = 0.05
+  return shares * (1 - p) - shares * feeRate * p * (1 - p)
+}
+
+function formatNetYieldAfterFees(price?: number | string | null, size?: number | string | null) {
+  const netYield = netYieldAfterFeesValue(price, size)
+  if (netYield === null) return ''
+
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })
+
+  return `${netYield >= 0 ? '+' : '-'}${formatter.format(Math.abs(netYield))}`
 }
 
 // Extrait la température du seuil ("18°C", "26°C or higher") pour trier les markets
@@ -219,6 +276,7 @@ interface CityGroup {
   airport: string
   peakLabel: string | null
   localTime: string | null
+  dateLabel: string | null
   tz: string | null
   minRemainingSeconds: number
   urgentCount: number
@@ -328,6 +386,7 @@ const groups = computed<CityGroup[]>(() => {
         airport: market.airport || '',
         peakLabel: market.peakLabel || null,
         localTime: market.localTime || null,
+        dateLabel: formatBetDateLabel(market.date),
         tz: market.airportData?.tz || null,
         minRemainingSeconds: Number.POSITIVE_INFINITY,
         urgentCount: 0,
@@ -337,6 +396,10 @@ const groups = computed<CityGroup[]>(() => {
 
     const group = map.get(city)!
     group.markets.push(market)
+
+    if (!group.dateLabel && market.date) {
+      group.dateLabel = formatBetDateLabel(market.date)
+    }
 
     const remaining = remainingSecondsForTimezone(market.airportData?.tz)
     if (remaining < group.minRemainingSeconds) group.minRemainingSeconds = remaining
@@ -442,12 +505,26 @@ function getMarketLinks(market: DustMarket): MarketLink[] {
   return Array.from(unique.values())
 }
 
-function hasMarketLinks(market: DustMarket) {
-  return getMarketLinks(market).length > 0
+function getGroupLinks(group: CityGroup) {
+  const unique = new Map<string, MarketLink>()
+
+  for (const market of group.markets) {
+    for (const link of getMarketLinks(market)) {
+      if (!unique.has(link.url)) {
+        unique.set(link.url, link)
+      }
+    }
+  }
+
+  return Array.from(unique.values())
 }
 
-function linkCount(market: DustMarket) {
-  return getMarketLinks(market).length
+function hasGroupLinks(group: CityGroup) {
+  return getGroupLinks(group).length > 0
+}
+
+function linkCountGroup(group: CityGroup) {
+  return getGroupLinks(group).length
 }
 
 async function copyLinkToClipboard(link: MarketLink) {
@@ -466,72 +543,37 @@ async function copyLinkToClipboard(link: MarketLink) {
   }
 }
 
-function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
-  const links = getMarketLinks(market)
-
+function buildLinkMenuItems(links: MarketLink[]): DropdownMenuItem[] {
   if (!links.length) {
-    return [[{
-      type: 'label',
+    return [{
       label: 'Aucun lien disponible'
-    }]]
+    }]
   }
 
-  const makeLinkItem = (link: MarketLink): DropdownMenuItem => ({
+  const sorted = [...links].sort((a, b) => a.label.localeCompare(b.label))
+
+  return sorted.map((link) => ({
     label: link.label,
     icon: link.source === 'betmoar' ? 'i-lucide-chart-line' : link.source === 'polymarket' ? 'i-lucide-store' : 'i-lucide-cloud',
     children: [{
       label: 'Ouvrir dans un nouvel onglet',
       icon: 'i-lucide-external-link',
-      to: link.url,
-      target: '_blank'
+      onSelect() {
+        window.open(link.url, '_blank', 'noopener,noreferrer')
+      }
     }, {
       label: 'Copier le lien',
       icon: 'i-lucide-copy',
       onSelect() {
         void copyLinkToClipboard(link)
       }
-    }]
-  })
+    }],
+    trailingIcon: 'i-lucide-chevron-right'
+  }))
+}
 
-  const marketLinks = links.filter(link => link.source === 'polymarket')
-  const analyticsLinks = links.filter(link => link.source === 'betmoar')
-  const weatherLinks = links.filter(link => link.source !== 'polymarket' && link.source !== 'betmoar')
-
-  const polymarket = marketLinks[0]
-
-  const actions: DropdownMenuItem[] = []
-
-  if (polymarket) {
-    actions.unshift({
-      label: 'Copier lien Polymarket',
-      icon: 'i-lucide-copy',
-      onSelect() {
-        void copyLinkToClipboard(polymarket)
-      }
-    })
-  }
-
-  const items: DropdownMenuItem[][] = [[{
-    type: 'label',
-    label: `${links.length} lien${links.length > 1 ? 's' : ''}`
-  }], actions]
-
-  if (marketLinks.length) {
-    items.push([{ type: 'label', label: 'Market' }])
-    items.push(marketLinks.map(makeLinkItem))
-  }
-
-  if (analyticsLinks.length) {
-    items.push([{ type: 'label', label: 'Analytics' }])
-    items.push(analyticsLinks.map(makeLinkItem))
-  }
-
-  if (weatherLinks.length) {
-    items.push([{ type: 'label', label: 'Weather' }])
-    items.push(weatherLinks.map(makeLinkItem))
-  }
-
-  return items
+function getLinkMenuItemsForGroup(group: CityGroup) {
+  return buildLinkMenuItems(getGroupLinks(group))
 }
 </script>
 
@@ -643,40 +685,55 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
     <div v-else class="grid grid-cols-1 items-start gap-2 sm:gap-3 lg:grid-cols-2 2xl:grid-cols-3">
       <section v-for="group in groups" :key="group.city"
         class="overflow-hidden rounded-xl border border-white/5 bg-white/5 sm:rounded-2xl sm:border-white/10">
-        <button type="button"
-          class="flex w-full items-center justify-between gap-2.5 px-3 py-2.5 text-left transition hover:bg-white/5 sm:gap-3 sm:px-4 sm:py-3"
-          @click="toggleCity(group.city)">
-          <div class="flex min-w-0 items-center gap-3">
-            <UIcon :name="isCollapsed(group.city) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
-              class="size-4 shrink-0 text-slate-400" />
-            <div class="min-w-0">
-              <h3 class="truncate text-sm font-semibold text-white">
-                {{ group.city }}
-                <span v-if="group.airport" class="ml-1 text-[11px] font-normal text-slate-400">{{ group.airport
-                  }}</span>
-              </h3>
-              <p v-if="group.peakLabel" class="truncate text-[11px] text-slate-400">
-                Peak {{ group.peakLabel }}
-              </p>
+        <div class="flex w-full items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+          <button type="button"
+            class="flex min-w-0 flex-1 items-center justify-between gap-2.5 text-left transition hover:bg-white/5"
+            @click="toggleCity(group.city)">
+            <div class="flex min-w-0 items-center gap-3">
+              <UIcon :name="isCollapsed(group.city) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
+                class="size-4 shrink-0 text-slate-400" />
+              <div class="min-w-0">
+                <h3 class="truncate text-sm font-semibold text-white">
+                  {{ group.city }}
+                  <span v-if="group.airport" class="ml-1 text-[11px] font-normal text-slate-400">{{ group.airport
+                    }}</span>
+                </h3>
+                <div class="flex items-center gap-1.5">
+                  <p v-if="group.peakLabel" class="truncate text-[11px] text-slate-400">
+                    Peak {{ group.peakLabel }}
+                  </p>
+                  <span v-if="group.dateLabel" class="inline-flex items-center rounded-full bg-white/5 px-1.5 py-0.5 text-[11px] font-medium text-slate-300">
+                    {{ group.dateLabel }}
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="flex shrink-0 items-center gap-3">
-            <div class="text-right leading-none">
-              <p class="font-mono text-lg font-bold tabular-nums text-white">{{ cityTime(group.tz, group.localTime) }}
-              </p>
-              <p v-if="timeToMidnight(group.tz)" class="mt-0.5 text-[11px] font-medium tabular-nums"
-                :class="timeToMidnight(group.tz)!.urgent ? 'text-rose-300' : 'text-amber-300/80'">
-                <UIcon name="i-lucide-moon" class="-mt-0.5 mr-0.5 inline-block size-3" />minuit dans {{
-                  timeToMidnight(group.tz)!.label }}
-              </p>
+            <div class="flex shrink-0 items-center gap-3">
+              <div class="text-right leading-none">
+                <p class="font-mono text-lg font-bold tabular-nums text-white">{{ cityTime(group.tz, group.localTime) }}
+                </p>
+                <p v-if="timeToMidnight(group.tz)" class="mt-0.5 text-[11px] font-medium tabular-nums"
+                  :class="timeToMidnight(group.tz)!.urgent ? 'text-rose-300' : 'text-amber-300/80'">
+                  <UIcon name="i-lucide-moon" class="-mt-0.5 mr-0.5 inline-block size-3" />minuit dans {{
+                    timeToMidnight(group.tz)!.label }}
+                </p>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <UBadge v-if="group.urgentCount > 0" color="warning" variant="subtle" class="shrink-0 rounded-full">⏳ {{
+                  group.urgentCount }}</UBadge>
+              </div>
             </div>
-            <div class="flex items-center gap-1.5">
-              <UBadge v-if="group.urgentCount > 0" color="warning" variant="subtle" class="shrink-0 rounded-full">⏳ {{
-                group.urgentCount }}</UBadge>
-              <UBadge color="neutral" variant="subtle" class="shrink-0 rounded-full">{{ group.markets.length }}</UBadge>
-            </div>
-          </div>
-        </button>
+          </button>
+
+          <UDropdownMenu v-if="hasGroupLinks(group)"
+            :items="getLinkMenuItemsForGroup(group)"
+            :content="{ align: 'end', side: 'bottom', collisionPadding: 12 }"
+            :ui="{ content: 'w-72' }">
+            <UButton color="neutral" variant="soft" size="xs" icon="i-lucide-link-2" class="h-6 px-2 text-[10px]">
+              {{ linkCountGroup(group) }}
+            </UButton>
+          </UDropdownMenu>
+        </div>
 
         <div v-if="!isCollapsed(group.city)"
           class="space-y-1.5 border-t border-white/5 p-2 sm:space-y-2 sm:border-white/10 sm:p-3">
@@ -712,13 +769,6 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
                 <span class="rounded-full px-2 py-0.5 font-semibold" :class="isYes(market.outcome)
                   ? 'bg-emerald-400/15 text-emerald-300'
                   : 'bg-rose-400/15 text-rose-300'">{{ formatCents(market.bestAsk) }}</span>
-
-                <UDropdownMenu v-if="hasMarketLinks(market)" :items="getLinkMenuItems(market)"
-                  :content="{ align: 'end', side: 'bottom', collisionPadding: 12 }" :ui="{ content: 'w-72' }">
-                  <UButton color="neutral" variant="soft" size="xs" icon="i-lucide-link-2" class="h-6 px-2 text-[10px]">
-                    {{ linkCount(market) }}
-                  </UButton>
-                </UDropdownMenu>
               </div>
             </div>
 
@@ -731,8 +781,12 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
                   <span class="absolute inset-y-0 right-0 bg-rose-400/15" :style="{ width: `${level.depth}%` }" />
                   <span class="relative w-[28%] font-semibold text-rose-300">{{ formatCents(level.price) }}</span>
                   <span class="relative w-[36%] text-right text-slate-300">{{ formatShares(level.size) }}</span>
-                  <span class="relative w-[36%] text-right text-slate-400">{{ formatUsd(level.price, level.size)
-                    }}</span>
+                  <div class="relative flex w-[36%] flex-col items-end text-right">
+                    <span class="text-slate-400">{{ formatUsd(level.price, level.size) }}</span>
+                    <span class="text-[10px]" :class="(netYieldAfterFeesValue(level.price, level.size) ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300'">
+                      {{ formatNetYieldAfterFees(level.price, level.size) }}
+                    </span>
+                  </div>
                 </div>
               </template>
               <div v-else class="px-2 py-1 text-[11px] italic text-slate-500">Pas d'asks</div>
@@ -740,10 +794,8 @@ function getLinkMenuItems(market: DustMarket): DropdownMenuItem[][] {
               <!-- Séparateur bids / asks -->
               <div
                 class="my-0.5 flex items-center justify-between border-y border-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-slate-500 sm:border-white/10">
-                <span>Bids</span>
                 <span v-if="market.displaySpread || market.spread">Spread {{ market.displaySpread ||
                   formatSpread(market.spread) }}</span>
-                <span>Asks</span>
               </div>
 
               <!-- Bids (max 3) : meilleur bid juste sous le séparateur -->
