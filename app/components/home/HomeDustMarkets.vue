@@ -558,9 +558,9 @@ function buildLinkMenuItems(links: MarketLink[]): DropdownMenuItem[] {
     children: [{
       label: 'Ouvrir dans un nouvel onglet',
       icon: 'i-lucide-external-link',
-      onSelect() {
-        window.open(link.url, '_blank', 'noopener,noreferrer')
-      }
+      href: link.url,
+      target: '_blank',
+      rel: 'noopener noreferrer'
     }, {
       label: 'Copier le lien',
       icon: 'i-lucide-copy',
