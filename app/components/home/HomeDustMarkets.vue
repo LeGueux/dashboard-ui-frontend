@@ -39,6 +39,8 @@ interface MarketLink {
   source?: string
 }
 
+const QUICK_LINK_LABELS = ['WETHR', 'BM EVENT']
+
 const props = withDefaults(defineProps<{
   markets?: DustMarket[]
   loading?: boolean
@@ -575,6 +577,23 @@ function buildLinkMenuItems(links: MarketLink[]): DropdownMenuItem[] {
 function getLinkMenuItemsForGroup(group: CityGroup) {
   return buildLinkMenuItems(getGroupLinks(group))
 }
+
+function normalizeLinkLabel(label?: string | null) {
+  return String(label || '').trim().toUpperCase()
+}
+
+function getQuickLinksForGroup(group: CityGroup) {
+  const links = getGroupLinks(group)
+  const quick: MarketLink[] = []
+
+  for (const targetLabel of QUICK_LINK_LABELS) {
+    const target = normalizeLinkLabel(targetLabel)
+    const match = links.find(link => normalizeLinkLabel(link.label) === target)
+    if (match) quick.push(match)
+  }
+
+  return quick
+}
 </script>
 
 <template>
@@ -685,9 +704,9 @@ function getLinkMenuItemsForGroup(group: CityGroup) {
     <div v-else class="grid grid-cols-1 items-start gap-2 sm:gap-3 lg:grid-cols-2 2xl:grid-cols-3">
       <section v-for="group in groups" :key="group.city"
         class="overflow-hidden rounded-xl border border-white/5 bg-white/5 sm:rounded-2xl sm:border-white/10">
-        <div class="flex w-full items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+        <div class="flex w-full flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3 sm:px-4 sm:py-3">
           <button type="button"
-            class="flex min-w-0 flex-1 items-center justify-between gap-2.5 text-left transition hover:bg-white/5"
+            class="flex w-full min-w-0 flex-1 items-center justify-between gap-2.5 rounded-md text-left transition hover:bg-white/5"
             @click="toggleCity(group.city)">
             <div class="flex min-w-0 items-center gap-3">
               <UIcon :name="isCollapsed(group.city) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
@@ -725,12 +744,29 @@ function getLinkMenuItemsForGroup(group: CityGroup) {
             </div>
           </button>
 
-          <UDropdownMenu v-if="hasGroupLinks(group)"
-            :items="getLinkMenuItemsForGroup(group)"
-            :content="{ align: 'end', side: 'bottom', collisionPadding: 12 }"
-            :ui="{ content: 'w-72' }">
-            <UButton color="neutral" variant="soft" size="xs" icon="i-lucide-link-2" class="h-6 px-2" />
-          </UDropdownMenu>
+          <div class="flex w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:flex-nowrap">
+            <UButton
+              v-for="quickLink in getQuickLinksForGroup(group)"
+              :key="`${group.city}-quick-${quickLink.label}`"
+              color="primary"
+              variant="soft"
+              size="xs"
+              :to="quickLink.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              :title="`Ouvrir ${quickLink.label}`"
+              class="h-6 px-2"
+            >
+              {{ quickLink.label }}
+            </UButton>
+
+            <UDropdownMenu v-if="hasGroupLinks(group)"
+              :items="getLinkMenuItemsForGroup(group)"
+              :content="{ align: 'end', side: 'bottom', collisionPadding: 12 }"
+              :ui="{ content: 'w-72' }">
+              <UButton color="neutral" variant="soft" size="xs" icon="i-lucide-link-2" class="h-6 px-2" />
+            </UDropdownMenu>
+          </div>
         </div>
 
         <div v-if="!isCollapsed(group.city)"
