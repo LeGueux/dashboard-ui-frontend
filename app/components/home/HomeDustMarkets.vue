@@ -729,9 +729,7 @@ function getLinkMenuItemsForGroup(group: CityGroup) {
             :items="getLinkMenuItemsForGroup(group)"
             :content="{ align: 'end', side: 'bottom', collisionPadding: 12 }"
             :ui="{ content: 'w-72' }">
-            <UButton color="neutral" variant="soft" size="xs" icon="i-lucide-link-2" class="h-6 px-2 text-[10px]">
-              {{ linkCountGroup(group) }}
-            </UButton>
+            <UButton color="neutral" variant="soft" size="xs" icon="i-lucide-link-2" class="h-6 px-2" />
           </UDropdownMenu>
         </div>
 
