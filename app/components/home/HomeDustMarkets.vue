@@ -292,7 +292,7 @@ interface CityGroup {
 type ViewMode = 'all' | 'quick' | 'conviction'
 
 const viewMode = ref<ViewMode>('all')
-const hideOnly999Bids = ref(false)
+const hideOnly999Asks = ref(false)
 
 const cInput = ref('')
 const fInput = ref('')
@@ -333,6 +333,18 @@ function spreadCents(market: DustMarket) {
 function bestAskCents(market: DustMarket) {
   const ask = Number(market.bestAsk ?? market.asks?.[0]?.price ?? Number.POSITIVE_INFINITY)
   return Number.isFinite(ask) ? ask * 100 : Number.POSITIVE_INFINITY
+}
+
+function hasOnly999Asks(market: DustMarket) {
+  const activeAskPrices = (market.asks || [])
+    .filter(ask => Number.isFinite(Number(ask.price)) && Number(ask.size) > 0)
+    .map((ask) => {
+      const price = Number(ask.price)
+      return price <= 1 ? price * 100 : price
+    })
+
+  return activeAskPrices.length > 0
+    && activeAskPrices.every(price => Number(price.toFixed(3)) === 99.9)
 }
 
 function askDepthTop3(market: DustMarket) {
@@ -378,17 +390,8 @@ function marketSort(a: DustMarket, b: DustMarket) {
 
 const groups = computed<CityGroup[]>(() => {
   const cards = dedupeMarkets(props.markets || [])
-  const marketCountByCity = new Map<string, number>()
-  for (const market of cards) {
-    const city = market.city || 'Ville inconnue'
-    marketCountByCity.set(city, (marketCountByCity.get(city) || 0) + 1)
-  }
-
   const filteredCards = cards.filter((market) => {
-    const city = market.city || 'Ville inconnue'
-    const isOnlyMarketAt999 = marketCountByCity.get(city) === 1
-      && Number(bestAskCents(market).toFixed(3)) === 99.9
-    if (hideOnly999Bids.value && isOnlyMarketAt999) return false
+    if (hideOnly999Asks.value && hasOnly999Asks(market)) return false
     if (viewMode.value === 'quick') return isQuickSetup(market)
     if (viewMode.value === 'conviction') return isHighConviction(market)
     return true
@@ -672,12 +675,12 @@ function getResolutionBadgeForGroup(group: CityGroup) {
           </UButton>
           <UButton
             size="xs"
-            :color="hideOnly999Bids ? 'error' : 'neutral'"
-            :variant="hideOnly999Bids ? 'solid' : 'soft'"
-            title="Masque les villes qui ont une seule température, avec un best ask à 99.9 cents."
-            :aria-pressed="hideOnly999Bids"
-            aria-label="Masquer les villes avec une seule température à 99.9 cents"
-            @click="hideOnly999Bids = !hideOnly999Bids"
+            :color="hideOnly999Asks ? 'error' : 'neutral'"
+            :variant="hideOnly999Asks ? 'solid' : 'soft'"
+            title="Masque les températures dont tous les asks disponibles sont à 99.9 cents."
+            :aria-pressed="hideOnly999Asks"
+            aria-label="Masquer les températures avec uniquement des asks à 99.9 cents"
+            @click="hideOnly999Asks = !hideOnly999Asks"
           >
             Hide 99.9 only
           </UButton>
