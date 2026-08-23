@@ -5,6 +5,10 @@ export interface DustMarket {
   airport?: string | null
   outcome?: string | null
   date?: string | null
+  resolutionSource?: string | null
+  resolutionProvider?: string | null
+  resolutionAirportCode?: string | null
+  resolutionSourceMatchesAirport?: boolean | null
   groupItemTitle?: string | null
   link?: string | null
   asks?: { price?: number | string; size?: number | string }[]

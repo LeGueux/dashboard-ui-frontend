@@ -16,6 +16,10 @@ interface DustMarket {
   airport?: string | null
   outcome?: string | null
   date?: string | null
+  resolutionSource?: string | null
+  resolutionProvider?: string | null
+  resolutionAirportCode?: string | null
+  resolutionSourceMatchesAirport?: boolean | null
   groupItemTitle?: string | null
   link?: string | null
   asks?: DustAsk[]
@@ -594,6 +598,32 @@ function getQuickLinksForGroup(group: CityGroup) {
 
   return quick
 }
+
+function getResolutionBadgeForGroup(group: CityGroup) {
+  const market = group.markets.find(item => item.resolutionSource)
+  if (!market?.resolutionSource) return null
+
+  let provider = market.resolutionProvider?.toLowerCase() || ''
+  if (!provider) {
+    try {
+      provider = new URL(market.resolutionSource).hostname.toLowerCase()
+    } catch {
+      provider = ''
+    }
+  }
+
+  const label = provider.includes('wunderground')
+    ? 'WU'
+    : provider.includes('weather.gov')
+      ? 'NWS'
+      : 'SOURCE'
+
+  return {
+    label,
+    url: market.resolutionSource,
+    matchesAirportCode: market.resolutionSourceMatchesAirport
+  }
+}
 </script>
 
 <template>
@@ -745,6 +775,20 @@ function getQuickLinksForGroup(group: CityGroup) {
           </button>
 
           <div class="flex w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:flex-nowrap">
+            <UButton
+              v-if="getResolutionBadgeForGroup(group)"
+              :to="getResolutionBadgeForGroup(group)!.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              :color="getResolutionBadgeForGroup(group)!.matchesAirportCode === false ? 'error' : 'success'"
+              variant="soft"
+              size="xs"
+              :title="`Source de resolution ${getResolutionBadgeForGroup(group)!.label}`"
+              class="h-6 px-2 font-semibold"
+            >
+              {{ getResolutionBadgeForGroup(group)!.label }}
+            </UButton>
+
             <UButton
               v-for="quickLink in getQuickLinksForGroup(group)"
               :key="`${group.city}-quick-${quickLink.label}`"
