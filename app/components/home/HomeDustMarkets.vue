@@ -620,7 +620,6 @@ function getResolutionBadgeForGroup(group: CityGroup) {
 
   return {
     label,
-    url: market.resolutionSource,
     matchesAirportCode: market.resolutionSourceMatchesAirport
   }
 }
@@ -775,19 +774,16 @@ function getResolutionBadgeForGroup(group: CityGroup) {
           </button>
 
           <div class="flex w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:flex-nowrap">
-            <UButton
+            <UBadge
               v-if="getResolutionBadgeForGroup(group)"
-              :to="getResolutionBadgeForGroup(group)!.url"
-              target="_blank"
-              rel="noopener noreferrer"
               :color="getResolutionBadgeForGroup(group)!.matchesAirportCode === false ? 'error' : 'success'"
               variant="soft"
               size="xs"
-              :title="`Source de resolution ${getResolutionBadgeForGroup(group)!.label}`"
-              class="h-6 px-2 font-semibold"
+              :title="`Source de resolution : ${getResolutionBadgeForGroup(group)!.label}`"
+              class="h-6 select-none px-2 font-semibold"
             >
               {{ getResolutionBadgeForGroup(group)!.label }}
-            </UButton>
+            </UBadge>
 
             <UButton
               v-for="quickLink in getQuickLinksForGroup(group)"
