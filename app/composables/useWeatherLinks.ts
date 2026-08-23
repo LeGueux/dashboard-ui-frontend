@@ -4,11 +4,24 @@ export interface WeatherLink {
   source: string
 }
 
+export interface ResolutionSource {
+  eventSlug?: string | null
+  marketSlug?: string | null
+  city?: string | null
+  date?: string | null
+  airportCode?: string | null
+  resolutionSource?: string | null
+  resolutionProvider?: string | null
+  resolutionAirportCode?: string | null
+  matchesAirportCode?: boolean
+}
+
 export interface AirportWeatherLinks {
   code: string
   city?: string
   tz?: string | null
   links: WeatherLink[]
+  resolutionSources?: ResolutionSource[]
   ignoreForTrading?: boolean
   airportData?: {
     code?: string | null
@@ -88,6 +101,6 @@ export function useWeatherLinks() {
     loading: readonly(loading),
     error: readonly(error),
     totalAirports: readonly(totalAirports),
-    refresh: loadWeatherLinks,
+    refresh: loadWeatherLinks
   }
 }

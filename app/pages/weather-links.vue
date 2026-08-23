@@ -426,6 +426,32 @@ const copyToClipboard = async (text: string) => {
                     </span>
                   </div>
 
+                  <!-- Sources de resolution declarees par Polymarket, par date. -->
+                  <div v-if="airport.resolutionSources?.length" class="mb-2 space-y-1">
+                    <a
+                      v-for="source in airport.resolutionSources"
+                      :key="source.eventSlug || `${source.date}-${source.resolutionSource}`"
+                      :href="source.resolutionSource || undefined"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="flex items-center justify-between gap-2 rounded border px-2 py-1 text-[10px] transition-colors"
+                      :class="source.matchesAirportCode === false
+                        ? 'border-rose-400/40 bg-rose-400/10 text-rose-200 hover:bg-rose-400/20'
+                        : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200 hover:bg-emerald-400/20'"
+                    >
+                      <span class="min-w-0 truncate">
+                        Resolution {{ source.date || 'date inconnue' }} · {{ source.resolutionProvider || 'source inconnue' }}
+                      </span>
+                      <span class="flex shrink-0 items-center gap-1 font-mono">
+                        {{ source.resolutionAirportCode || '?' }}
+                        <UIcon
+                          :name="source.matchesAirportCode === false ? 'i-lucide-triangle-alert' : 'i-lucide-external-link'"
+                          class="size-3"
+                        />
+                      </span>
+                    </a>
+                  </div>
+
                   <!-- Liens compacts inline -->
                   <div class="flex flex-wrap gap-1">
                     <a
