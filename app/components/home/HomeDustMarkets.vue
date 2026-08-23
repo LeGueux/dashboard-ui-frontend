@@ -292,6 +292,7 @@ interface CityGroup {
 type ViewMode = 'all' | 'quick' | 'conviction'
 
 const viewMode = ref<ViewMode>('all')
+const hideOnly999Bids = ref(false)
 
 const cInput = ref('')
 const fInput = ref('')
@@ -332,6 +333,19 @@ function spreadCents(market: DustMarket) {
 function bestAskCents(market: DustMarket) {
   const ask = Number(market.bestAsk ?? market.asks?.[0]?.price ?? Number.POSITIVE_INFINITY)
   return Number.isFinite(ask) ? ask * 100 : Number.POSITIVE_INFINITY
+}
+
+function hasOnly999Bid(market: DustMarket) {
+  const activeBids = (market.bids || []).filter((bid) => {
+    const price = Number(bid.price)
+    const size = Number(bid.size)
+    return Number.isFinite(price) && Number.isFinite(size) && size > 0
+  })
+
+  if (activeBids.length !== 1) return false
+  const price = Number(activeBids[0]?.price)
+  const priceCents = price <= 1 ? price * 100 : price
+  return Number(priceCents.toFixed(3)) === 99.9
 }
 
 function askDepthTop3(market: DustMarket) {
@@ -378,6 +392,7 @@ function marketSort(a: DustMarket, b: DustMarket) {
 const groups = computed<CityGroup[]>(() => {
   const cards = dedupeMarkets(props.markets || [])
   const filteredCards = cards.filter((market) => {
+    if (hideOnly999Bids.value && hasOnly999Bid(market)) return false
     if (viewMode.value === 'quick') return isQuickSetup(market)
     if (viewMode.value === 'conviction') return isHighConviction(market)
     return true
@@ -659,6 +674,17 @@ function getResolutionBadgeForGroup(group: CityGroup) {
             title="Montre uniquement les marchés notés A (forte conviction)."
             aria-label="Filtre High conviction: marchés notés A" @click="viewMode = 'conviction'">High conviction
           </UButton>
+          <UButton
+            size="xs"
+            :color="hideOnly999Bids ? 'error' : 'neutral'"
+            :variant="hideOnly999Bids ? 'solid' : 'soft'"
+            title="Masque les marchés dont le carnet contient uniquement un bid à 99.9 cents."
+            :aria-pressed="hideOnly999Bids"
+            aria-label="Masquer les marchés avec un unique bid à 99.9 cents"
+            @click="hideOnly999Bids = !hideOnly999Bids"
+          >
+            Hide 99.9 only
+          </UButton>
         </div>
 
         <details class="group mt-2 rounded-lg border border-white/10 bg-black/15">
@@ -745,6 +771,16 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   {{ group.city }}
                   <span v-if="group.airport" class="ml-1 text-[11px] font-normal text-slate-400">{{ group.airport
                     }}</span>
+                  <span
+                    v-if="getResolutionBadgeForGroup(group)"
+                    :title="`Source de resolution : ${getResolutionBadgeForGroup(group)!.label}`"
+                    class="ml-1.5 inline-flex select-none items-center rounded px-1.5 py-0.5 align-middle text-[9px] font-bold tracking-wide"
+                    :class="getResolutionBadgeForGroup(group)!.matchesAirportCode === false
+                      ? 'border border-rose-400/40 bg-rose-400/15 text-rose-200'
+                      : 'border border-violet-400/40 bg-violet-400/15 text-violet-200'"
+                  >
+                    {{ getResolutionBadgeForGroup(group)!.label }}
+                  </span>
                 </h3>
                 <div class="flex items-center gap-1.5">
                   <p v-if="group.peakLabel" class="truncate text-[11px] text-slate-400">
@@ -774,17 +810,6 @@ function getResolutionBadgeForGroup(group: CityGroup) {
           </button>
 
           <div class="flex w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:flex-nowrap">
-            <UBadge
-              v-if="getResolutionBadgeForGroup(group)"
-              :color="getResolutionBadgeForGroup(group)!.matchesAirportCode === false ? 'error' : 'success'"
-              variant="soft"
-              size="xs"
-              :title="`Source de resolution : ${getResolutionBadgeForGroup(group)!.label}`"
-              class="h-6 select-none px-2 font-semibold"
-            >
-              {{ getResolutionBadgeForGroup(group)!.label }}
-            </UBadge>
-
             <UButton
               v-for="quickLink in getQuickLinksForGroup(group)"
               :key="`${group.city}-quick-${quickLink.label}`"
