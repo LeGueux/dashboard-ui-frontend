@@ -335,19 +335,6 @@ function bestAskCents(market: DustMarket) {
   return Number.isFinite(ask) ? ask * 100 : Number.POSITIVE_INFINITY
 }
 
-function hasOnly999Bid(market: DustMarket) {
-  const activeBids = (market.bids || []).filter((bid) => {
-    const price = Number(bid.price)
-    const size = Number(bid.size)
-    return Number.isFinite(price) && Number.isFinite(size) && size > 0
-  })
-
-  if (activeBids.length !== 1) return false
-  const price = Number(activeBids[0]?.price)
-  const priceCents = price <= 1 ? price * 100 : price
-  return Number(priceCents.toFixed(3)) === 99.9
-}
-
 function askDepthTop3(market: DustMarket) {
   return (market.asks || [])
     .slice(0, 3)
@@ -391,8 +378,17 @@ function marketSort(a: DustMarket, b: DustMarket) {
 
 const groups = computed<CityGroup[]>(() => {
   const cards = dedupeMarkets(props.markets || [])
+  const marketCountByCity = new Map<string, number>()
+  for (const market of cards) {
+    const city = market.city || 'Ville inconnue'
+    marketCountByCity.set(city, (marketCountByCity.get(city) || 0) + 1)
+  }
+
   const filteredCards = cards.filter((market) => {
-    if (hideOnly999Bids.value && hasOnly999Bid(market)) return false
+    const city = market.city || 'Ville inconnue'
+    const isOnlyMarketAt999 = marketCountByCity.get(city) === 1
+      && Number(bestAskCents(market).toFixed(3)) === 99.9
+    if (hideOnly999Bids.value && isOnlyMarketAt999) return false
     if (viewMode.value === 'quick') return isQuickSetup(market)
     if (viewMode.value === 'conviction') return isHighConviction(market)
     return true
@@ -678,9 +674,9 @@ function getResolutionBadgeForGroup(group: CityGroup) {
             size="xs"
             :color="hideOnly999Bids ? 'error' : 'neutral'"
             :variant="hideOnly999Bids ? 'solid' : 'soft'"
-            title="Masque les marchés dont le carnet contient uniquement un bid à 99.9 cents."
+            title="Masque les villes qui ont une seule température, avec un best ask à 99.9 cents."
             :aria-pressed="hideOnly999Bids"
-            aria-label="Masquer les marchés avec un unique bid à 99.9 cents"
+            aria-label="Masquer les villes avec une seule température à 99.9 cents"
             @click="hideOnly999Bids = !hideOnly999Bids"
           >
             Hide 99.9 only
