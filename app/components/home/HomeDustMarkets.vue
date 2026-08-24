@@ -766,7 +766,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
               <UIcon :name="isCollapsed(group.city) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
                 class="size-4 shrink-0 text-slate-400" />
               <div class="min-w-0">
-                <h3 class="truncate text-sm font-semibold text-white">
+                <h3 class="text-sm font-semibold text-balance break-words text-white">
                   {{ group.city }}
                   <span v-if="group.airport" class="ml-1 text-[11px] font-normal text-slate-400">{{ group.airport
                     }}</span>
@@ -781,8 +781,8 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     {{ getResolutionBadgeForGroup(group)!.label }}
                   </span>
                 </h3>
-                <div class="flex items-center gap-1.5">
-                  <p v-if="group.peakLabel" class="truncate text-[11px] text-slate-400">
+                <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                  <p v-if="group.peakLabel" class="break-words text-[11px] text-slate-400">
                     Peak {{ group.peakLabel }}
                   </p>
                   <span v-if="group.dateLabel" class="inline-flex items-center rounded-full bg-white/5 px-1.5 py-0.5 text-[11px] font-medium text-slate-300">
