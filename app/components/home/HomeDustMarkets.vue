@@ -43,7 +43,7 @@ interface MarketLink {
   source?: string
 }
 
-const QUICK_LINK_LABELS = ['WETHR', 'BM EVENT']
+const QUICK_LINK_LABELS = ['NWS', 'WETHR', 'BM EVENT']
 
 const props = withDefaults(defineProps<{
   markets?: DustMarket[]
@@ -319,17 +319,6 @@ function remainingSecondsForTimezone(tz?: string | null) {
   return 86400 - (h * 3600 + m * 60 + s)
 }
 
-function spreadCents(market: DustMarket) {
-  if (market.displaySpread) {
-    const parsed = Number.parseFloat(String(market.displaySpread).replace(',', '.'))
-    if (Number.isFinite(parsed)) return parsed
-  }
-
-  const spreadValue = Number(market.spread ?? 0)
-  if (Number.isFinite(spreadValue) && spreadValue > 0) return spreadValue * 100
-  return Number.POSITIVE_INFINITY
-}
-
 function bestAskCents(market: DustMarket) {
   const ask = Number(market.bestAsk ?? market.asks?.[0]?.price ?? Number.POSITIVE_INFINITY)
   return Number.isFinite(ask) ? ask * 100 : Number.POSITIVE_INFINITY
@@ -543,10 +532,6 @@ function hasGroupLinks(group: CityGroup) {
   return getGroupLinks(group).length > 0
 }
 
-function linkCountGroup(group: CityGroup) {
-  return getGroupLinks(group).length
-}
-
 async function copyLinkToClipboard(link: MarketLink) {
   try {
     await navigator.clipboard.writeText(link.url)
@@ -758,7 +743,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
     <div v-else class="grid grid-cols-1 items-start gap-2 sm:gap-3 lg:grid-cols-2 2xl:grid-cols-3">
       <section v-for="group in groups" :key="group.city"
         class="overflow-hidden rounded-xl border border-white/5 bg-white/5 sm:rounded-2xl sm:border-white/10">
-        <div class="flex w-full flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3 sm:px-4 sm:py-3">
+        <div class="flex w-full flex-col gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
           <button type="button"
             class="flex w-full min-w-0 flex-1 items-center justify-between gap-2.5 rounded-md text-left transition hover:bg-white/5"
             @click="toggleCity(group.city)">
@@ -808,21 +793,23 @@ function getResolutionBadgeForGroup(group: CityGroup) {
             </div>
           </button>
 
-          <div class="flex w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:flex-nowrap">
-            <UButton
-              v-for="quickLink in getQuickLinksForGroup(group)"
-              :key="`${group.city}-quick-${quickLink.label}`"
-              color="primary"
-              variant="soft"
-              size="xs"
-              :to="quickLink.url"
-              target="_blank"
-              rel="noopener noreferrer"
-              :title="`Ouvrir ${quickLink.label}`"
-              class="h-6 px-2"
-            >
-              {{ quickLink.label }}
-            </UButton>
+          <div class="flex w-full items-center justify-between gap-2 pl-7">
+            <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+              <UButton
+                v-for="quickLink in getQuickLinksForGroup(group)"
+                :key="`${group.city}-quick-${quickLink.label}`"
+                color="primary"
+                variant="soft"
+                size="xs"
+                :to="quickLink.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                :title="`Ouvrir ${quickLink.label}`"
+                class="h-6 px-2"
+              >
+                {{ quickLink.label }}
+              </UButton>
+            </div>
 
             <UDropdownMenu v-if="hasGroupLinks(group)"
               :items="getLinkMenuItemsForGroup(group)"

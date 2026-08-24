@@ -2,6 +2,7 @@ node_modules/
 .env
 /data/
 npm-debug.log
+package-lock.json
 dist/
 # Logs
 logs

@@ -1,64 +1,76 @@
-# Nuxt Dashboard Template
+# Dust Dashboard Frontend
 
-[![Nuxt UI](https://img.shields.io/badge/Made%20with-Nuxt%20UI-00DC82?logo=nuxt&labelColor=020420)](https://ui.nuxt.com)
+Frontend Nuxt 4 du dashboard Polymarket Dust. L'application affiche les marches dust envoyes par l'ingest backend, expose le wiki des liens meteo et quelques pages de configuration issues du dashboard.
 
-Get started with the Nuxt dashboard template with multiple pages, collapsible sidebar, keyboard shortcuts, light & dark mode, command palette and more, powered by [Nuxt UI](https://ui.nuxt.com).
+## Prerequis
 
-- [Live demo](https://dashboard-template.nuxt.dev/)
-- [Documentation](https://ui.nuxt.com/docs/getting-started/installation/nuxt)
+- Node.js 24 ou plus recent
+- pnpm, via Corepack recommande
 
-<a href="https://dashboard-template.nuxt.dev/" target="_blank">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://ui.nuxt.com/assets/templates/nuxt/dashboard-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="https://ui.nuxt.com/assets/templates/nuxt/dashboard-light.png">
-    <img alt="Nuxt Dashboard Template" src="https://ui.nuxt.com/assets/templates/nuxt/dashboard-light.png">
-  </picture>
-</a>
-
-> The dashboard template for Vue is on https://github.com/nuxt-ui-templates/dashboard-vue.
-
-## Quick Start
-
-```bash [Terminal]
-npm create nuxt@latest -- -t ui/dashboard
+```bash
+corepack enable
+corepack prepare pnpm@11.23.0 --activate
 ```
 
-## Deploy your own
+Le gestionnaire de paquets officiel est `pnpm`. Le fichier de lock a conserver est [pnpm-lock.yaml](pnpm-lock.yaml). Ne pas utiliser `npm install`, qui genere un `package-lock.json` concurrent.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-name=dashboard&repository-url=https%3A%2F%2Fgithub.com%2Fnuxt-ui-templates%2Fdashboard&demo-image=https%3A%2F%2Fui.nuxt.com%2Fassets%2Ftemplates%2Fnuxt%2Fdashboard-dark.png&demo-url=https%3A%2F%2Fdashboard-template.nuxt.dev%2F&demo-title=Nuxt%20Dashboard%20Template&demo-description=A%20dashboard%20template%20with%20multi-column%20layout%20for%20building%20sophisticated%20admin%20interfaces.)
-
-## Setup
-
-Make sure to install the dependencies:
+## Installation
 
 ```bash
 pnpm install
 ```
 
-## Development Server
+## Configuration
 
-Start the development server on `http://localhost:3000`:
+Copier l'exemple d'environnement si besoin :
+
+```bash
+cp .env.example .env
+```
+
+Variable disponible :
+
+```bash
+NUXT_PUBLIC_INGEST_BACKEND_URL=https://api.legueux.xyz
+```
+
+Si elle n'est pas definie, Nuxt utilise la valeur par defaut configuree dans [nuxt.config.ts](nuxt.config.ts).
+
+## Demarrage local
 
 ```bash
 pnpm dev
 ```
 
-## Production
+Le dashboard est servi sur `http://localhost:3000` par defaut.
 
-Build the application for production:
-
-```bash
-pnpm build
-```
-
-Locally preview production build:
+## Commandes utiles
 
 ```bash
-pnpm preview
+pnpm run typecheck
+pnpm run lint
+pnpm run build
+pnpm run preview
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+Note : `pnpm run lint` peut encore remonter des regles de formatage historiques dans certains fichiers Vue. `pnpm run typecheck` est la verification principale pour les changements fonctionnels.
 
-## Renovate integration
+## Structure principale
 
-Install [Renovate GitHub app](https://github.com/apps/renovate/installations/select_target) on your repository and you are good to go.
+- [app/pages/index.vue](app/pages/index.vue) : page principale du dashboard dust
+- [app/components/home/HomeDustMarkets.vue](app/components/home/HomeDustMarkets.vue) : cartes de marches et raccourcis meteo
+- [app/pages/weather-links.vue](app/pages/weather-links.vue) : wiki des liens meteo par aeroport
+- [app/composables/useDustMarkets.ts](app/composables/useDustMarkets.ts) : chargement des marches depuis l'ingest backend
+- [app/composables/useWeatherLinks.ts](app/composables/useWeatherLinks.ts) : chargement du wiki meteo
+
+## Deploiement
+
+```bash
+pnpm run build
+```
+
+Pour tester le build localement :
+
+```bash
+pnpm run preview
+```
