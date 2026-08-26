@@ -737,7 +737,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
     <div v-else-if="!groups.length"
       class="rounded-2xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-slate-300">
       <UIcon name="i-lucide-sparkles" class="mx-auto mb-3 size-8 text-emerald-300" />
-      Aucun market dust n’est encore disponible. Le bot Discord devra en envoyer pour alimenter cette vue.
+      Aucun market dust n'est encore disponible. Le bot Discord devra en envoyer pour alimenter cette vue.
     </div>
 
     <div v-else class="grid grid-cols-1 items-start gap-2 sm:gap-3 lg:grid-cols-2 2xl:grid-cols-3">
