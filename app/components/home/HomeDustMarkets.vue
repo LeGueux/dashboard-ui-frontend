@@ -43,7 +43,7 @@ interface MarketLink {
   source?: string
 }
 
-const QUICK_LINK_LABELS = ['NWS', 'WETHR', 'BM EVENT']
+const QUICK_LINK_LABELS = ['NWS', 'WETHR', 'WU', 'BM EVENT']
 
 const props = withDefaults(defineProps<{
   markets?: DustMarket[]
