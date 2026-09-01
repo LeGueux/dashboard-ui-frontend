@@ -11,8 +11,8 @@ export interface DustMarket {
   resolutionSourceMatchesAirport?: boolean | null
   groupItemTitle?: string | null
   link?: string | null
-  asks?: { price?: number | string; size?: number | string }[]
-  bids?: { price?: number | string; size?: number | string }[]
+  asks?: { price?: number | string, size?: number | string }[]
+  bids?: { price?: number | string, size?: number | string }[]
   spread?: number | string | null
   currentPrice?: number | string | null
   bestAsk?: number | string | null
@@ -20,10 +20,79 @@ export interface DustMarket {
   displaySpread?: string | null
   localTime?: string | null
   peakLabel?: string | null
-  links?: { label: string; url: string; source?: string }[]
+  links?: { label: string, url: string, source?: string }[]
   betmoardLinks?: string | null
   airportLinks?: string | null
-  airportData?: { tz?: string | null; ignoreForTrading?: boolean | null } | null
+  airportData?: { code?: string | null, tz?: string | null, unit?: 'C' | 'F' | null, ignoreForTrading?: boolean | null } | null
+}
+
+export interface WeatherObservation {
+  timeLocal: string
+  temperature: number | null
+  humidity?: number | null
+  dewPoint?: number | null
+  windSpeed?: number | null
+  windGust?: number | null
+  windDirection?: string | null
+  pressure?: number | null
+  visibility?: number | null
+  flightCategory?: string | null
+  cloudCover?: string | null
+  condition?: string | null
+  conditionIcon?: string | null
+  source?: 'metar' | 'wethr' | 'nws' | 'weather-com' | 'unknown'
+  rawText?: string | null
+  validated?: boolean
+}
+
+export interface WeatherHourlyPoint {
+  timeLocal: string
+  temperature: number | null
+  condition?: string | null
+  conditionIcon?: string | null
+}
+
+export interface WeatherSnapshot {
+  airport: string
+  city?: string | null
+  tz?: string | null
+  unit: 'C' | 'F'
+  source: 'nws' | 'wunderground-weather-com' | 'wunderground-link' | 'open-meteo' | 'unknown'
+  sourceLabel: string
+  sourceUrl?: string | null
+  reason?: string | null
+  error?: string | null
+  disabled?: boolean
+  disabledReason?: string | null
+  fetchedAt: string
+  observedAt?: string | null
+  stale: boolean
+  nextRefreshAt?: string | null
+  current?: {
+    temperature: number | null
+    feelsLike?: number | null
+    condition?: string | null
+    conditionIcon?: string | null
+    humidity?: number | null
+    windSpeed?: number | null
+    windDirection?: string | null
+    pressure?: number | null
+  }
+  recentObservations?: WeatherObservation[]
+  hourly?: WeatherHourlyPoint[]
+  sparkline?: Array<{ timeLocal: string, temperature: number, kind?: 'observed' | 'forecast' }>
+}
+
+export interface WeatherTradingSignal {
+  marketId: string | number | null
+  airport: string
+  threshold: number | null
+  unit: 'C' | 'F'
+  outcome: 'Yes' | 'No' | string | null
+  status: 'safe' | 'watch' | 'risk' | 'unknown'
+  confidence: number
+  margin: number | null
+  reason: string
 }
 
 export interface DustFeedPayload {
@@ -32,6 +101,8 @@ export interface DustFeedPayload {
   generatedAt?: string
   count?: number
   markets?: DustMarket[]
+  weatherSnapshots?: Record<string, WeatherSnapshot>
+  weatherTradingSignals?: WeatherTradingSignal[]
   summary?: Record<string, unknown>
 }
 
@@ -58,6 +129,8 @@ export function useDustMarkets() {
   const ingestUrl = (publicConfig.ingestBackendUrl || publicConfig.NUXT_PUBLIC_INGEST_BACKEND_URL) as string | undefined
 
   const markets = ref<DustMarket[]>([])
+  const weatherSnapshots = ref<Record<string, WeatherSnapshot>>({})
+  const weatherTradingSignals = ref<WeatherTradingSignal[]>([])
   const loading = ref(true)
   const error = ref<string | null>(null)
   const lastUpdated = ref<string | null>(null)
@@ -87,6 +160,8 @@ export function useDustMarkets() {
       // 204 = aucun état encore reçu par le bot — pas une erreur
       if (stateRes.status === 204) {
         markets.value = []
+        weatherSnapshots.value = {}
+        weatherTradingSignals.value = []
         status.value = 'idle'
         error.value = 'No dust market data available yet.'
         hasLoadedOnce.value = true
@@ -102,6 +177,8 @@ export function useDustMarkets() {
       const nextMarkets = dedupeMarkets(Array.isArray(payload?.markets) ? payload.markets : [])
 
       markets.value = nextMarkets
+      weatherSnapshots.value = payload?.weatherSnapshots && typeof payload.weatherSnapshots === 'object' ? payload.weatherSnapshots : {}
+      weatherTradingSignals.value = Array.isArray(payload?.weatherTradingSignals) ? payload.weatherTradingSignals : []
       lastUpdated.value = payload.generatedAt || payload.summary?.generatedAtLocale as string || null
       source.value = payload.source || 'Ingest backend'
       lastSyncAt.value = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -113,6 +190,8 @@ export function useDustMarkets() {
       error.value = message
       status.value = 'error'
       markets.value = []
+      weatherSnapshots.value = {}
+      weatherTradingSignals.value = []
     } finally {
       loading.value = false
     }
@@ -151,6 +230,8 @@ export function useDustMarkets() {
           const nextMarkets = dedupeMarkets(Array.isArray(payload?.markets) ? payload.markets : [])
 
           markets.value = nextMarkets
+          weatherSnapshots.value = payload?.weatherSnapshots && typeof payload.weatherSnapshots === 'object' ? payload.weatherSnapshots : {}
+          weatherTradingSignals.value = Array.isArray(payload?.weatherTradingSignals) ? payload.weatherTradingSignals : []
           lastUpdated.value = payload.generatedAt || payload.summary?.generatedAtLocale as string || null
           source.value = payload.source || 'Ingest backend'
           lastSyncAt.value = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -178,6 +259,8 @@ export function useDustMarkets() {
 
   return {
     markets,
+    weatherSnapshots,
+    weatherTradingSignals,
     loading,
     error,
     lastUpdated,

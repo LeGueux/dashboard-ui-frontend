@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { markets, loading, lastUpdated, source, status, lastSyncAt, error } = useDustMarkets()
+const { markets, weatherSnapshots, weatherTradingSignals, loading, lastUpdated, source, status, lastSyncAt, error } = useDustMarkets()
 
 const runtime = useRuntimeConfig()
 const appVersion = runtime.public.appVersion as string
@@ -59,7 +59,15 @@ const statusDotTone = computed(() => {
 
     <template #body>
       <div class="space-y-6">
-        <HomeDustMarkets :markets="markets" :loading="loading" :last-updated="lastUpdated" :count="markets.length" :source="source" />
+        <HomeDustMarkets
+          :markets="markets"
+          :weather-snapshots="weatherSnapshots"
+          :weather-trading-signals="weatherTradingSignals"
+          :loading="loading"
+          :last-updated="lastUpdated"
+          :count="markets.length"
+          :source="source"
+        />
 
         <UCard class="border border-white/10 bg-white/5" :ui="{ body: 'py-3' }">
           <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
