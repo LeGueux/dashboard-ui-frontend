@@ -52,6 +52,13 @@ export interface WeatherHourlyPoint {
   conditionIcon?: string | null
 }
 
+export interface WeatherForecastModel {
+  id: string
+  label: string
+  color: string
+  hourly: WeatherHourlyPoint[]
+}
+
 export interface WeatherSnapshot {
   airport: string
   city?: string | null
@@ -80,6 +87,7 @@ export interface WeatherSnapshot {
   }
   recentObservations?: WeatherObservation[]
   hourly?: WeatherHourlyPoint[]
+  forecastModels?: WeatherForecastModel[]
   sparkline?: Array<{ timeLocal: string, temperature: number, kind?: 'observed' | 'forecast' }>
 }
 

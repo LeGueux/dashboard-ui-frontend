@@ -49,17 +49,11 @@ const QUICK_LINK_LABELS = ['NWS', 'WETHR', 'WU', 'BM EVENT']
 const props = withDefaults(defineProps<{
   markets?: DustMarket[]
   loading?: boolean
-  lastUpdated?: string | null
-  count?: number
-  source?: string | null
   weatherSnapshots?: Record<string, WeatherSnapshot>
   weatherTradingSignals?: WeatherTradingSignal[]
 }>(), {
   markets: () => [],
   loading: false,
-  lastUpdated: null,
-  count: 0,
-  source: 'Ingest backend',
   weatherSnapshots: () => ({}),
   weatherTradingSignals: () => []
 })
@@ -73,6 +67,9 @@ interface WeatherHoverPoint {
   timeLocal: string
   temperature: number
   kind?: 'observed' | 'forecast'
+  label?: string
+  color?: string
+  chartWidth?: number
 }
 
 const hoveredWeatherPoint = ref<WeatherHoverPoint | null>(null)
@@ -82,7 +79,7 @@ function showWeatherPoint(airport: string, point: Omit<WeatherHoverPoint, 'airpo
 }
 
 function weatherTooltipX(point: WeatherHoverPoint) {
-  return point.x > 220 ? point.x - 92 : point.x + 8
+  return point.x > (point.chartWidth || 320) * 0.7 ? point.x - 92 : point.x + 8
 }
 
 function weatherTooltipY(point: WeatherHoverPoint) {
@@ -414,45 +411,84 @@ function weatherAxisLabel(localMinute: number) {
   return `${String(date.getUTCHours()).padStart(2, '0')}:00`
 }
 
+const compactWeatherChart = useMediaQuery('(max-width: 767px)')
+
 function sparklinePaths(snapshot: WeatherSnapshot) {
-  const points = (snapshot.sparkline || []).filter(point => Number.isFinite(point.temperature))
-  const empty = { observed: '', forecast: '', points: [], observedPoints: [], forecastPoints: [], axisPoints: [], boundaryX: null, peakPoint: null, min: null, middle: null, max: null }
+  const chartWidth = compactWeatherChart.value ? 320 : 520
+  const chartLeft = compactWeatherChart.value ? 34 : 42
+  const chartRight = chartWidth - 10
+  const plotWidth = chartRight - chartLeft
+  const gridXs = Array.from({ length: 5 }, (_, index) => chartLeft + (plotWidth * index) / 4)
+  type ChartPoint = { timeLocal: string, temperature: number, kind?: 'observed' | 'forecast', label?: string, color?: string, modelId?: string }
+  const basePoints: ChartPoint[] = (snapshot.sparkline || [])
+    .filter(point => Number.isFinite(point.temperature))
+    .map(point => ({ ...point, temperature: Number(point.temperature) }))
+  const observations = basePoints.filter(point => point.kind === 'observed')
+  const fallbackForecast = basePoints.filter(point => point.kind === 'forecast')
+  const modelRows: ChartPoint[] = (snapshot.forecastModels || []).flatMap(model => model.hourly.slice(0, 12)
+    .filter(point => Number.isFinite(point.temperature))
+    .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: model.label, color: model.color, modelId: model.id })))
+  const points = [...observations, ...(modelRows.length ? modelRows : fallbackForecast)]
+  const empty = { observed: '', forecast: '', spread: '', modelPaths: [], points: [], observedPoints: [], forecastPoints: [], axisPoints: [], boundaryX: null, peakPoint: null, min: null, middle: null, max: null, consensusMax: null, spreadMax: null, chartWidth, chartLeft, chartRight, labelX: chartLeft - 5, gridXs }
   if (points.length < 2) return empty
   const values = points.map(point => point.temperature)
   const min = Math.min(...values)
   const max = Math.max(...values)
   const range = max - min || 1
-  const localMinutes = points.map(point => weatherLocalMinute(point.timeLocal, snapshot.tz))
-  const validTimeline = localMinutes.every(value => value !== null) && new Set(localMinutes).size > 1
-  const firstMinute = validTimeline ? localMinutes[0]! : 0
-  const lastMinute = validTimeline ? localMinutes.at(-1)! : points.length - 1
+  const localMinutes = points.map(point => weatherLocalMinute(point.timeLocal, snapshot.tz)).filter((value): value is number => value !== null)
+  const validTimeline = localMinutes.length === points.length && new Set(localMinutes).size > 1
+  const firstMinute = validTimeline ? Math.min(...localMinutes) : 0
+  const lastMinute = validTimeline ? Math.max(...localMinutes) : points.length - 1
   const minuteRange = lastMinute - firstMinute || 1
   const coords = points.map((point, index) => ({
     ...point,
-    x: 34 + ((validTimeline ? localMinutes[index]! - firstMinute : index) / minuteRange) * 276,
-    y: 135 - ((point.temperature - min) / range) * 110
+    x: chartLeft + ((validTimeline ? weatherLocalMinute(point.timeLocal, snapshot.tz)! - firstMinute : index) / minuteRange) * plotWidth,
+    y: 135 - ((point.temperature - min) / range) * 110,
+    chartWidth
   }))
   const path = (items: typeof coords) => items.map((point, index) => `${index ? 'L' : 'M'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ')
   const observedPoints = coords.filter(point => point.kind === 'observed')
-  const forecastPoints = coords.filter(point => point.kind === 'forecast')
+  const rawForecastPoints = coords.filter(point => point.kind === 'forecast')
+  const grouped = new Map<string, typeof rawForecastPoints>()
+  for (const point of rawForecastPoints) grouped.set(point.timeLocal, [...(grouped.get(point.timeLocal) || []), point])
+  const forecastPoints = [...grouped.entries()].map(([timeLocal, rows]) => ({
+    timeLocal, kind: 'forecast' as const, label: 'Consensus', color: '#e2e8f0',
+    temperature: rows.reduce((sum, row) => sum + row.temperature, 0) / rows.length,
+    x: rows[0]!.x,
+    y: 135 - (((rows.reduce((sum, row) => sum + row.temperature, 0) / rows.length) - min) / range) * 110,
+    chartWidth
+  })).sort((a, b) => a.x - b.x)
   const peakPoint = observedPoints.reduce<(typeof observedPoints)[number] | null>((peak, point) => !peak || point.temperature > peak.temperature ? point : peak, null)
   const forecastPathPoints = observedPoints.length && forecastPoints.length
     ? [observedPoints.at(-1)!, ...forecastPoints]
     : forecastPoints
+  const modelPaths = (snapshot.forecastModels || []).map((model) => {
+    const modelPoints = coords.filter(point => point.modelId === model.id).sort((a, b) => a.x - b.x)
+    const linked = observedPoints.length && modelPoints.length ? [observedPoints.at(-1)!, ...modelPoints] : modelPoints
+    return { ...model, path: path(linked), points: modelPoints }
+  }).filter(model => model.path)
+  const spreadRows = [...grouped.values()].filter(rows => rows.length > 1).map(rows => ({
+    x: rows[0]!.x,
+    top: 135 - ((Math.max(...rows.map(row => row.temperature)) - min) / range) * 110,
+    bottom: 135 - ((Math.min(...rows.map(row => row.temperature)) - min) / range) * 110
+  })).sort((a, b) => a.x - b.x)
+  const spread = spreadRows.length > 1
+    ? `M ${spreadRows.map(row => `${row.x.toFixed(1)} ${row.top.toFixed(1)}`).join(' L ')} L ${spreadRows.slice().reverse().map(row => `${row.x.toFixed(1)} ${row.bottom.toFixed(1)}`).join(' L ')} Z`
+    : ''
   const desiredStep = minuteRange <= 8 * 60 ? 2 * 60 : minuteRange <= 16 * 60 ? 3 * 60 : 6 * 60
   const firstTick = Math.ceil(firstMinute / desiredStep) * desiredStep
   const axisPoints = validTimeline
     ? Array.from({ length: Math.max(0, Math.floor((lastMinute - firstTick) / desiredStep) + 1) }, (_, index) => {
         const minute = firstTick + index * desiredStep
-        return { x: 34 + ((minute - firstMinute) / minuteRange) * 276, label: weatherAxisLabel(minute), timeLocal: String(minute) }
+        return { x: chartLeft + ((minute - firstMinute) / minuteRange) * plotWidth, label: weatherAxisLabel(minute), timeLocal: String(minute) }
       })
     : coords
         .filter((_point, index) => index % Math.max(1, Math.ceil(coords.length / 4)) === 0 || index === coords.length - 1)
         .map(point => ({ ...point, label: null }))
   return {
     observed: path(observedPoints),
-    forecast: path(forecastPathPoints),
-    points: coords,
+    forecast: path(forecastPathPoints), spread, modelPaths,
+    points: [...observedPoints, ...forecastPoints],
     observedPoints,
     forecastPoints,
     axisPoints,
@@ -460,7 +496,10 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
     peakPoint,
     min,
     middle: min + range / 2,
-    max
+    max,
+    consensusMax: forecastPoints.length ? Math.max(...forecastPoints.map(point => point.temperature)) : null,
+    spreadMax: spreadRows.length ? Math.max(...[...grouped.values()].map(rows => Math.max(...rows.map(row => row.temperature)) - Math.min(...rows.map(row => row.temperature)))) : null,
+    chartWidth, chartLeft, chartRight, labelX: chartLeft - 5, gridXs
   }
 }
 
@@ -475,9 +514,6 @@ function temperatureTrend(snapshot: WeatherSnapshot) {
   return { icon: '→', label: 'Stable', delta: 0 }
 }
 
-type ViewMode = 'all' | 'quick' | 'conviction'
-
-const viewMode = ref<ViewMode>('all')
 const hideOnly999Asks = ref(false)
 
 const cInput = ref('')
@@ -522,31 +558,6 @@ function hasOnly999Asks(market: DustMarket) {
     && activeAskPrices.every(price => Number(price.toFixed(3)) === 99.9)
 }
 
-function askDepthTop3(market: DustMarket) {
-  return (market.asks || [])
-    .slice(0, 3)
-    .reduce((acc, level) => acc + Number(level.size ?? 0), 0)
-}
-
-function marketGrade(market: DustMarket) {
-  const remaining = remainingSecondsForTimezone(market.airportData?.tz)
-  const ask = bestAskCents(market)
-  const depth = askDepthTop3(market)
-
-  if (remaining <= 2 * 3600 && ask <= 99.5 && depth >= 80) return { grade: 'A', emoji: '🟢', tone: 'text-emerald-200 bg-emerald-400/15' }
-  if (remaining <= 4 * 3600 && ask <= 99.8 && depth >= 30) return { grade: 'B', emoji: '🟠', tone: 'text-amber-200 bg-amber-400/15' }
-  return { grade: 'C', emoji: '🔴', tone: 'text-rose-200 bg-rose-400/15' }
-}
-
-function isQuickSetup(market: DustMarket) {
-  const remaining = remainingSecondsForTimezone(market.airportData?.tz)
-  return remaining <= 3 * 3600 || bestAskCents(market) <= 99.5
-}
-
-function isHighConviction(market: DustMarket) {
-  return marketGrade(market).grade === 'A'
-}
-
 function marketSort(a: DustMarket, b: DustMarket) {
   const yesA = isYes(a.outcome) ? 0 : 1
   const yesB = isYes(b.outcome) ? 0 : 1
@@ -567,8 +578,6 @@ const groups = computed<CityGroup[]>(() => {
   const cards = dedupeMarkets(props.markets || [])
   const filteredCards = cards.filter((market) => {
     if (hideOnly999Asks.value && hasOnly999Asks(market)) return false
-    if (viewMode.value === 'quick') return isQuickSetup(market)
-    if (viewMode.value === 'conviction') return isHighConviction(market)
     return true
   })
   const map = new Map<string, CityGroup>()
@@ -816,68 +825,28 @@ function getResolutionBadgeForGroup(group: CityGroup) {
   >
     <template #header>
       <div class="flex flex-col gap-2 border-b border-white/10 pb-3">
-        <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p class="text-[10px] uppercase tracking-[0.35em] text-emerald-300/80">
-              Dust feed
-            </p>
-            <h2 class="mt-1 text-xl font-semibold text-white">
-              Markets sélectionnés
-            </h2>
-            <p class="mt-1 text-xs text-slate-300">
-              Vue compacte des opportunités dust envoyées par le bot.
-            </p>
-          </div>
-
-          <div class="flex flex-wrap gap-2 text-xs text-slate-200">
-            <UBadge color="success" variant="subtle" class="rounded-full px-2.5 py-1">
-              {{ count }} marchés
-            </UBadge>
-            <UBadge color="neutral" variant="subtle" class="rounded-full px-2.5 py-1">
-              {{ source }}
-            </UBadge>
-            <UBadge
-              v-if="lastUpdated"
-              color="primary"
-              variant="subtle"
-              class="rounded-full px-2.5 py-1"
-            >
-              Mis à jour le
-              {{ formatFrDate(lastUpdated) }}
-            </UBadge>
-          </div>
+        <div>
+          <p class="text-[10px] uppercase tracking-[0.35em] text-emerald-300/80">
+            Dust feed
+          </p>
+          <h2 class="mt-1 text-xl font-semibold text-white">
+            Markets sélectionnés
+          </h2>
+          <p class="mt-1 text-xs text-slate-300">
+            Vue compacte des opportunités dust envoyées par le bot.
+          </p>
         </div>
 
         <div class="mt-1 flex flex-wrap gap-1.5 text-xs">
           <UButton
             size="xs"
-            :color="viewMode === 'all' ? 'primary' : 'neutral'"
-            :variant="viewMode === 'all' ? 'solid' : 'soft'"
+            :color="!hideOnly999Asks ? 'primary' : 'neutral'"
+            :variant="!hideOnly999Asks ? 'solid' : 'soft'"
             title="Affiche tous les marchés disponibles, sans filtre."
             aria-label="Filtre Tous: affiche tous les marchés"
-            @click="viewMode = 'all'"
+            @click="hideOnly999Asks = false"
           >
             Tous
-          </UButton>
-          <UButton
-            size="xs"
-            :color="viewMode === 'quick' ? 'warning' : 'neutral'"
-            :variant="viewMode === 'quick' ? 'solid' : 'soft'"
-            title="Montre les setups les plus actionnables: proches de minuit ou avec prix attractif."
-            aria-label="Filtre Setup rapides: urgents ou prix attractif"
-            @click="viewMode = 'quick'"
-          >
-            Setup rapides
-          </UButton>
-          <UButton
-            size="xs"
-            :color="viewMode === 'conviction' ? 'success' : 'neutral'"
-            :variant="viewMode === 'conviction' ? 'solid' : 'soft'"
-            title="Montre uniquement les marchés notés A (forte conviction)."
-            aria-label="Filtre High conviction: marchés notés A"
-            @click="viewMode = 'conviction'"
-          >
-            High conviction
           </UButton>
           <UButton
             size="xs"
@@ -905,32 +874,16 @@ function getResolutionBadgeForGroup(group: CityGroup) {
             <div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
               <div class="rounded-md border border-white/10 bg-white/5 p-2.5">
                 <p class="font-semibold text-slate-100">
-                  Critères utilisés
+                  Affichage
                 </p>
-                <div class="mt-2 flex flex-wrap gap-1.5">
-                  <span
-                    class="inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-2 py-0.5 text-emerald-200"
-                  >🟢
-                    A: ≤ 2h + ask ≤ 99.5¢ + profondeur ≥ 80</span>
-                  <span
-                    class="inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-amber-200"
-                  >🟠 B:
-                    ≤ 4h + ask ≤ 99.8¢ + profondeur ≥ 30</span>
-                  <span class="inline-flex items-center gap-1 rounded-full bg-rose-400/15 px-2 py-0.5 text-rose-200">🔴
-                    C: le reste</span>
-                </div>
                 <div class="mt-2 space-y-1">
                   <p class="text-slate-300">
                     <span class="rounded bg-primary/15 px-1 py-0.5 text-primary">Tous</span>:
                     affiche tous les marchés sans filtre.
                   </p>
                   <p class="text-slate-300">
-                    <span class="rounded bg-amber-400/15 px-1 py-0.5 text-amber-200">Setup
-                      rapides</span>: ≤ 3h avant minuit ou ask ≤ 99.5¢.
-                  </p>
-                  <p class="text-slate-300">
-                    <span class="rounded bg-emerald-400/15 px-1 py-0.5 text-emerald-200">High
-                      conviction</span>: affiche uniquement les marchés notés A.
+                    <span class="rounded bg-rose-400/15 px-1 py-0.5 text-rose-200">Hide 99.9 only</span>:
+                    masque les marchés dont tous les asks sont à 99.9¢.
                   </p>
                   <p class="text-slate-300">
                     <span
@@ -996,7 +949,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
       Aucun market dust n'est encore disponible. Le bot Discord devra en envoyer pour alimenter cette vue.
     </div>
 
-    <div v-else class="grid grid-cols-1 items-start gap-2 sm:gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+    <div v-else class="grid grid-cols-1 items-start gap-3 xl:grid-cols-2">
       <section
         v-for="group in groups"
         :key="group.city"
@@ -1212,6 +1165,9 @@ function getResolutionBadgeForGroup(group: CityGroup) {
               <div class="flex items-center justify-between gap-2 px-1 text-[9px] font-medium text-slate-200">
                 <span class="uppercase tracking-wide">Température aujourd’hui</span>
                 <div class="flex items-center gap-2">
+                  <span v-if="weatherForGroup(group)!.forecastModels?.length" class="font-mono tabular-nums text-sky-200">
+                    {{ weatherForGroup(group)!.forecastModels!.length }} modèles · écart {{ weatherTemperature(sparklinePaths(weatherForGroup(group)!).spreadMax, weatherForGroup(group)!.unit) }}
+                  </span>
                   <span v-if="temperatureTrend(weatherForGroup(group)!)" class="font-semibold text-white">
                     {{ temperatureTrend(weatherForGroup(group)!)!.icon }} {{ temperatureTrend(weatherForGroup(group)!)!.label }}
                   </span>
@@ -1221,8 +1177,8 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                 </div>
               </div>
               <svg
-                viewBox="0 0 320 168"
-                class="h-44 w-full overflow-visible"
+                :viewBox="`0 0 ${sparklinePaths(weatherForGroup(group)!).chartWidth} 168`"
+                class="h-auto w-full overflow-visible"
                 role="img"
                 aria-label="Evolution de temperature observee puis prevue"
                 @pointerleave="hoveredWeatherPoint = null"
@@ -1230,15 +1186,15 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                 <line
                   v-for="y in [25, 80, 135]"
                   :key="`grid-y-${y}`"
-                  x1="34"
+                  :x1="sparklinePaths(weatherForGroup(group)!).chartLeft"
                   :y1="y"
-                  x2="310"
+                  :x2="sparklinePaths(weatherForGroup(group)!).chartRight"
                   :y2="y"
                   stroke="currentColor"
                   class="text-white/15"
                 />
                 <line
-                  v-for="x in [34, 103, 172, 241, 310]"
+                  v-for="x in sparklinePaths(weatherForGroup(group)!).gridXs"
                   :key="`grid-x-${x}`"
                   :x1="x"
                   y1="25"
@@ -1248,7 +1204,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   class="text-white/10"
                 />
                 <text
-                  x="29"
+                  :x="sparklinePaths(weatherForGroup(group)!).labelX"
                   y="28"
                   text-anchor="end"
                   fill="currentColor"
@@ -1257,7 +1213,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   {{ weatherTemperature(sparklinePaths(weatherForGroup(group)!).max, weatherForGroup(group)!.unit) }}
                 </text>
                 <text
-                  x="29"
+                  :x="sparklinePaths(weatherForGroup(group)!).labelX"
                   y="83"
                   text-anchor="end"
                   fill="currentColor"
@@ -1266,7 +1222,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   {{ weatherTemperature(sparklinePaths(weatherForGroup(group)!).middle, weatherForGroup(group)!.unit) }}
                 </text>
                 <text
-                  x="29"
+                  :x="sparklinePaths(weatherForGroup(group)!).labelX"
                   y="138"
                   text-anchor="end"
                   fill="currentColor"
@@ -1305,15 +1261,33 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   class="text-amber-300"
                 />
                 <path
+                  v-if="sparklinePaths(weatherForGroup(group)!).spread"
+                  :d="sparklinePaths(weatherForGroup(group)!).spread"
+                  fill="#38bdf8"
+                  fill-opacity="0.10"
+                  stroke="none"
+                />
+                <path
+                  v-for="model in sparklinePaths(weatherForGroup(group)!).modelPaths"
+                  :key="`model-${model.id}`"
+                  :d="model.path"
+                  fill="none"
+                  :stroke="model.color"
+                  stroke-width="1.35"
+                  stroke-dasharray="3 3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  opacity="0.82"
+                />
+                <path
                   v-if="sparklinePaths(weatherForGroup(group)!).forecast"
                   :d="sparklinePaths(weatherForGroup(group)!).forecast"
                   fill="none"
                   stroke="currentColor"
-                  stroke-width="2"
-                  stroke-dasharray="5 4"
+                  stroke-width="2.4"
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  class="text-sky-300"
+                  class="text-slate-100"
                 />
                 <circle
                   v-for="point in sparklinePaths(weatherForGroup(group)!).observedPoints"
@@ -1396,7 +1370,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     fill="white"
                     class="text-[8px] font-semibold"
                   >
-                    {{ weatherHour(hoveredWeatherPoint.timeLocal, group.tz) }} · {{ hoveredWeatherPoint.kind === 'observed' ? 'Mesuré' : 'Prévision' }}
+                    {{ weatherHour(hoveredWeatherPoint.timeLocal, group.tz) }} · {{ hoveredWeatherPoint.kind === 'observed' ? 'Mesuré' : (hoveredWeatherPoint.label || 'Consensus') }}
                   </text>
                   <text
                     :x="weatherTooltipX(hoveredWeatherPoint) + 6"
@@ -1411,17 +1385,23 @@ function getResolutionBadgeForGroup(group: CityGroup) {
               <div class="flex flex-wrap items-center justify-between gap-1 border-t border-white/15 px-1 py-1.5 text-[9px] font-medium text-slate-200">
                 <div class="flex items-center gap-2">
                   <span v-if="weatherForGroup(group)!.recentObservations?.length" class="inline-flex items-center gap-1"><span class="h-0.5 w-3 bg-amber-300" /> Mesuré</span>
-                  <span v-if="weatherForGroup(group)!.hourly?.length" class="inline-flex items-center gap-1"><span class="w-3 border-t-2 border-dashed border-sky-300" /> Prévision</span>
+                  <span v-if="weatherForGroup(group)!.forecastModels?.length" class="inline-flex flex-wrap items-center gap-2">
+                    <span v-for="model in weatherForGroup(group)!.forecastModels" :key="model.id" class="inline-flex items-center gap-1">
+                      <span class="w-3 border-t border-dashed" :style="{ borderColor: model.color }" /> {{ model.label }}
+                    </span>
+                    <span class="inline-flex items-center gap-1"><span class="w-3 border-t-2 border-slate-100" /> Consensus</span>
+                  </span>
+                  <span v-else-if="weatherForGroup(group)!.hourly?.length" class="inline-flex items-center gap-1"><span class="w-3 border-t-2 border-dashed border-sky-300" /> Prévision</span>
                 </div>
                 <span v-if="signalForGroup(group)" class="min-w-0 truncate" :title="signalForGroup(group)!.reason">{{ weatherSignalLabel(signalForGroup(group)!) }}</span>
               </div>
             </div>
 
-            <details v-if="weatherForGroup(group)!.recentObservations?.length" class="group mt-2 min-w-0 border-t border-white/10 pt-2">
+            <details v-if="weatherForGroup(group)!.recentObservations?.length" open class="group mt-2 min-w-0 border-t border-white/10 pt-2">
               <summary class="flex cursor-pointer list-none items-center justify-between gap-2 rounded px-1 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-200 hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300">
                 <span class="inline-flex items-center gap-1.5">
                   <UIcon name="i-lucide-chevron-down" class="size-3 transition-transform group-open:rotate-180" />
-                  Afficher les 8 derniers relevés
+                  8 derniers relevés METAR
                 </span>
                 <span
                   v-if="hasMetarObservations(weatherForGroup(group)!)"
@@ -1430,7 +1410,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   Station météo
                 </span>
               </summary>
-              <div class="mt-1.5 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+              <div class="mt-1.5 grid grid-cols-2 gap-1.5 sm:grid-cols-4 2xl:grid-cols-8">
                 <div
                   v-for="observation in weatherForGroup(group)!.recentObservations!.slice(-8)"
                   :key="`obs-${group.airport}-${observation.timeLocal}`"
@@ -1473,9 +1453,6 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     ? 'bg-emerald-400/15 text-emerald-300'
                     : 'bg-rose-400/15 text-rose-300'"
                 >{{ market.outcome || '—' }}</span>
-                <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold" :class="marketGrade(market).tone">
-                  {{ marketGrade(market).emoji }} {{ marketGrade(market).grade }}
-                </span>
                 <h4 class="truncate text-sm font-semibold text-white">
                   {{ market.groupItemTitle || 'Seuil' }}
                 </h4>
@@ -1492,54 +1469,66 @@ function getResolutionBadgeForGroup(group: CityGroup) {
             </div>
 
             <!-- Order book : asks (rouge) en haut, séparateur, bids (vert) en bas -->
-            <div class="mt-2 overflow-hidden rounded-md border border-white/5 sm:border-transparent">
+            <div class="mt-2 grid grid-cols-1 overflow-hidden rounded-md border border-white/10 bg-black/10 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
               <!-- Asks (max 3) : meilleur ask juste au-dessus du séparateur -->
-              <template v-if="orderBook(market).asks.length">
-                <div
-                  v-for="(level, i) in orderBook(market).asks"
-                  :key="`ask-${i}`"
-                  class="relative flex items-center px-2 py-1 text-[11px] tabular-nums"
-                >
-                  <span class="absolute inset-y-0 right-0 bg-rose-400/15" :style="{ width: `${level.depth}%` }" />
-                  <span class="relative w-[28%] font-semibold text-rose-300">{{ formatCents(level.price) }}</span>
-                  <span class="relative w-[36%] text-right text-slate-300">{{ formatShares(level.size) }}</span>
-                  <div class="relative flex w-[36%] flex-col items-end text-right">
-                    <span class="text-slate-400">{{ formatUsd(level.price, level.size) }}</span>
-                    <span class="text-[10px]" :class="(netYieldAfterFeesValue(level.price, level.size) ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300'">
-                      {{ formatNetYieldAfterFees(level.price, level.size) }}
-                    </span>
-                  </div>
+              <section class="min-w-0 bg-rose-400/[0.025]">
+                <div class="flex items-center justify-between border-b border-white/5 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-rose-300/80">
+                  <span>Asks</span>
+                  <span>Prix · Qté · Valeur</span>
                 </div>
-              </template>
-              <div v-else class="px-2 py-1 text-[11px] italic text-slate-500">
-                Pas d'asks
-              </div>
+                <template v-if="orderBook(market).asks.length">
+                  <div
+                    v-for="(level, i) in orderBook(market).asks"
+                    :key="`ask-${i}`"
+                    class="relative grid grid-cols-[auto_1fr_auto] items-center gap-3 px-2 py-1 text-[11px] tabular-nums"
+                  >
+                    <span class="absolute inset-y-0 right-0 bg-rose-400/15" :style="{ width: `${level.depth}%` }" />
+                    <span class="relative font-semibold text-rose-300">{{ formatCents(level.price) }}</span>
+                    <span class="relative text-right text-slate-300">{{ formatShares(level.size) }}</span>
+                    <div class="relative flex flex-col items-end text-right">
+                      <span class="text-slate-400">{{ formatUsd(level.price, level.size) }}</span>
+                      <span class="text-[10px]" :class="(netYieldAfterFeesValue(level.price, level.size) ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300'">
+                        {{ formatNetYieldAfterFees(level.price, level.size) }}
+                      </span>
+                    </div>
+                  </div>
+                </template>
+                <div v-else class="px-2 py-1 text-[11px] italic text-slate-500">
+                  Pas d'asks
+                </div>
+              </section>
 
               <!-- Séparateur bids / asks -->
               <div
-                class="my-0.5 flex items-center justify-between border-y border-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-slate-500 sm:border-white/10"
+                class="flex items-center justify-center border-y border-white/10 px-2 py-1 text-[9px] uppercase tracking-wider text-slate-400 md:w-20 md:border-x md:border-y-0"
               >
-                <span v-if="market.displaySpread || market.spread">Spread {{ market.displaySpread
+                <span v-if="market.displaySpread || market.spread" class="text-center">Spread {{ market.displaySpread
                   || formatSpread(market.spread) }}</span>
               </div>
 
               <!-- Bids (max 3) : meilleur bid juste sous le séparateur -->
-              <template v-if="orderBook(market).bids.length">
-                <div
-                  v-for="(level, i) in orderBook(market).bids"
-                  :key="`bid-${i}`"
-                  class="relative flex items-center px-2 py-1 text-[11px] tabular-nums"
-                >
-                  <span class="absolute inset-y-0 right-0 bg-emerald-400/15" :style="{ width: `${level.depth}%` }" />
-                  <span class="relative w-[28%] font-semibold text-emerald-300">{{ formatCents(level.price) }}</span>
-                  <span class="relative w-[36%] text-right text-slate-300">{{ formatShares(level.size) }}</span>
-                  <span class="relative w-[36%] text-right text-slate-400">{{ formatUsd(level.price, level.size)
-                  }}</span>
+              <section class="min-w-0 bg-emerald-400/[0.025]">
+                <div class="flex items-center justify-between border-b border-white/5 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-emerald-300/80">
+                  <span>Bids</span>
+                  <span>Prix · Qté · Valeur</span>
                 </div>
-              </template>
-              <div v-else class="px-2 py-1 text-[11px] italic text-slate-500">
-                No bids
-              </div>
+                <template v-if="orderBook(market).bids.length">
+                  <div
+                    v-for="(level, i) in orderBook(market).bids"
+                    :key="`bid-${i}`"
+                    class="relative grid grid-cols-[auto_1fr_auto] items-center gap-3 px-2 py-1 text-[11px] tabular-nums"
+                  >
+                    <span class="absolute inset-y-0 right-0 bg-emerald-400/15" :style="{ width: `${level.depth}%` }" />
+                    <span class="relative font-semibold text-emerald-300">{{ formatCents(level.price) }}</span>
+                    <span class="relative text-right text-slate-300">{{ formatShares(level.size) }}</span>
+                    <span class="relative text-right text-slate-400">{{ formatUsd(level.price, level.size)
+                    }}</span>
+                  </div>
+                </template>
+                <div v-else class="px-2 py-1 text-[11px] italic text-slate-500">
+                  No bids
+                </div>
+              </section>
             </div>
           </article>
         </div>
