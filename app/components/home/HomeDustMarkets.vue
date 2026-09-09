@@ -824,20 +824,12 @@ function getResolutionBadgeForGroup(group: CityGroup) {
     class="border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 shadow-xl shadow-slate-950/30"
   >
     <template #header>
-      <div class="flex flex-col gap-2 border-b border-white/10 pb-3">
-        <div>
-          <p class="text-[10px] uppercase tracking-[0.35em] text-emerald-300/80">
-            Dust feed
-          </p>
-          <h2 class="mt-1 text-xl font-semibold text-white">
-            Markets sélectionnés
-          </h2>
-          <p class="mt-1 text-xs text-slate-300">
-            Vue compacte des opportunités dust envoyées par le bot.
-          </p>
-        </div>
-
-        <div class="mt-1 flex flex-wrap gap-1.5 text-xs">
+      <div class="flex flex-col gap-2 border-b border-white/10 pb-2">
+        <div class="flex flex-wrap items-center gap-1.5 text-xs">
+          <span class="mr-1 inline-flex items-center gap-1 font-semibold text-slate-300">
+            <UIcon name="i-lucide-list-filter" class="size-3.5" />
+            Marchés
+          </span>
           <UButton
             size="xs"
             :color="!hideOnly999Asks ? 'primary' : 'neutral'"

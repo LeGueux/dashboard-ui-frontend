@@ -45,23 +45,18 @@ const shortStatusLabel = computed(() => {
       <UDashboardNavbar
         class="border-b border-white/10 bg-slate-950/90 backdrop-blur-xl"
         :ui="{
-          root: 'min-h-16 px-3 sm:px-5',
+          root: 'min-h-14 px-3 sm:px-5',
           title: 'min-w-0',
           right: 'gap-2 sm:gap-3'
         }"
       >
         <template #title>
           <div class="flex min-w-0 items-center gap-2.5">
-            <span class="grid size-9 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-gradient-to-br from-cyan-400/20 to-emerald-400/10 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
-              <UIcon name="i-lucide-cloud-sun" class="size-5 text-cyan-200" />
+            <span class="grid size-8 shrink-0 place-items-center rounded-lg border border-cyan-300/20 bg-gradient-to-br from-cyan-400/20 to-emerald-400/10 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
+              <UIcon name="i-lucide-cloud-sun" class="size-4.5 text-cyan-200" />
             </span>
-            <span class="min-w-0 leading-tight">
-              <span class="block truncate text-sm font-bold tracking-tight text-white sm:text-base">
-                Dust Weather
-              </span>
-              <span class="hidden truncate text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400 sm:block">
-                Terminal marchés météo
-              </span>
+            <span class="truncate text-sm font-bold tracking-tight text-white sm:text-base">
+              Dust Weather
             </span>
           </div>
         </template>
