@@ -1397,19 +1397,16 @@ function getResolutionBadgeForGroup(group: CityGroup) {
               </div>
             </div>
 
-            <details v-if="weatherForGroup(group)!.recentObservations?.length" open class="group mt-2 min-w-0 border-t border-white/10 pt-2">
-              <summary class="flex cursor-pointer list-none items-center justify-between gap-2 rounded px-1 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-200 hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300">
-                <span class="inline-flex items-center gap-1.5">
-                  <UIcon name="i-lucide-chevron-down" class="size-3 transition-transform group-open:rotate-180" />
-                  8 derniers relevés METAR
-                </span>
+            <section v-if="weatherForGroup(group)!.recentObservations?.length" class="mt-2 min-w-0 border-t border-white/10 pt-2">
+              <div class="flex items-center justify-between gap-2 px-1 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-200">
+                <span>8 derniers relevés METAR</span>
                 <span
                   v-if="hasMetarObservations(weatherForGroup(group)!)"
                   class="rounded border border-emerald-400/25 bg-emerald-400/10 px-1 py-0.5 text-emerald-200"
                 >
                   Station météo
                 </span>
-              </summary>
+              </div>
               <div class="mt-1.5 grid grid-cols-2 gap-1.5 sm:grid-cols-4 2xl:grid-cols-8">
                 <div
                   v-for="observation in weatherForGroup(group)!.recentObservations!.slice(-8)"
@@ -1430,7 +1427,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   </div>
                 </div>
               </div>
-            </details>
+            </section>
 
             <p v-if="weatherForGroup(group)!.source === 'unknown' || weatherForGroup(group)!.error" class="mt-1.5 text-[10px] font-medium text-slate-200">
               Donnees structurees indisponibles<span v-if="weatherForGroup(group)!.reason"> · {{ weatherForGroup(group)!.reason }}</span>
