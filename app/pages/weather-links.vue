@@ -74,17 +74,26 @@ const activeFilteredLinks = computed(() => {
 
 // ─── Clock ───────────────────────────────────────────────────────────────────
 const now = ref<Date>(new Date())
+// Horloge "grossière" (30s) pour le regroupement par fuseau : l'offset UTC ne
+// change jamais à la seconde, inutile de recalculer tous les aéroports chaque tick
+const coarseNow = ref<Date>(now.value)
 let clock: ReturnType<typeof setInterval> | null = null
+let coarseClock: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
   now.value = new Date()
+  coarseNow.value = now.value
   clock = setInterval(() => {
     now.value = new Date()
   }, 1000)
+  coarseClock = setInterval(() => {
+    coarseNow.value = new Date()
+  }, 30_000)
 })
 
 onBeforeUnmount(() => {
   if (clock) clearInterval(clock)
+  if (coarseClock) clearInterval(coarseClock)
 })
 
 function getUtcOffsetMinutes(timeZone: string, date = new Date()) {
@@ -142,20 +151,25 @@ function airportLocalNow(airport: (typeof filteredLinks.value)[number]) {
   return tzNowLabel(tz)
 }
 
+// Texte d'heure courante par groupe, évalué au rendu (peu de groupes vs. beaucoup d'aéroports)
+function groupNowText(group: { tzNames: Set<string> }) {
+  const tz = group.tzNames.values().next().value
+  return tz ? tzNowLabel(tz) : '--:--:--'
+}
+
 const groupedByTimezone = computed(() => {
   type AirportItem = (typeof filteredLinks.value)[number]
   const map = new Map<string, {
     key: string
     offset: number
     offsetText: string
-    nowText: string
     tzNames: Set<string>
     airports: AirportItem[]
   }>()
 
   for (const airport of activeFilteredLinks.value) {
     const tz = airport.tz || 'Timezone inconnue'
-    const offset = tz === 'Timezone inconnue' ? Number.POSITIVE_INFINITY : getUtcOffsetMinutes(tz, now.value)
+    const offset = tz === 'Timezone inconnue' ? Number.POSITIVE_INFINITY : getUtcOffsetMinutes(tz, coarseNow.value)
     const key = Number.isFinite(offset) ? `offset:${offset}` : 'offset:unknown'
 
     if (!map.has(key)) {
@@ -163,7 +177,6 @@ const groupedByTimezone = computed(() => {
         key,
         offset,
         offsetText: Number.isFinite(offset) ? offsetLabel(offset) : 'UTC ??:??',
-        nowText: tz === 'Timezone inconnue' ? '--:--:--' : tzNowLabel(tz),
         tzNames: new Set(),
         airports: []
       })
@@ -365,14 +378,14 @@ const copyToClipboard = async (text: string) => {
                   :name="isTzCollapsed(group.key) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
                   class="size-4 shrink-0 text-slate-400"
                 />
-                <span class="text-sm font-semibold text-sky-200">Heure locale {{ group.nowText }}</span>
+                <span class="text-sm font-semibold text-sky-200">Heure locale {{ groupNowText(group) }}</span>
               </div>
               <div class="flex items-center gap-2 text-xs">
                 <span class="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-slate-100">
                   {{ group.offsetText }}
                 </span>
                 <span class="rounded-full border border-sky-300/30 bg-sky-300/10 px-2 py-0.5 font-mono text-sky-100">
-                  {{ group.nowText }}
+                  {{ groupNowText(group) }}
                 </span>
                 <span class="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-slate-100">
                   {{ group.airports.length }} stations
