@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
-import type { WeatherSnapshot, WeatherTradingSignal } from '~/composables/useDustMarkets'
+import type { WeatherObservation, WeatherSnapshot, WeatherTradingSignal } from '~/composables/useDustMarkets'
 
 interface DustLevel {
   price?: number | string
@@ -337,6 +337,12 @@ function signalForGroup(group: CityGroup) {
 
 function weatherTemperature(value: number | null | undefined, unit: 'C' | 'F' = 'C') {
   return Number.isFinite(Number(value)) ? `${Math.round(Number(value) * 10) / 10}°${unit}` : '—'
+}
+
+function metarTemperature(observation: WeatherObservation, unit: 'C' | 'F' = 'C') {
+  if (observation.temperature === null || !Number.isFinite(Number(observation.temperature))) return '—'
+  const temperature = Math.round(Number(observation.temperature) * 10) / 10
+  return `${observation.temperaturePrecision === 'tenth' ? temperature.toFixed(1) : temperature}°${unit}`
 }
 
 function weatherConditionLabel(value?: string | null) {
@@ -1456,11 +1462,17 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     <span class="font-semibold text-slate-100">{{ weatherHour(observation.timeLocal, group.tz) }}</span>
                   </div>
                   <div class="mt-1 min-w-0">
-                    <p
-                      class="text-sm font-bold"
-                      :class="isDailyMaximumTemperature(observation.temperature, weatherForGroup(group)!) ? 'text-rose-300' : 'text-amber-100'"
-                    >
-                      {{ weatherTemperature(observation.temperature, weatherForGroup(group)!.unit) }}
+                    <p class="flex items-center gap-1 text-sm font-bold">
+                      <span :class="isDailyMaximumTemperature(observation.temperature, weatherForGroup(group)!) ? 'text-rose-300' : 'text-amber-100'">
+                        {{ metarTemperature(observation, weatherForGroup(group)!.unit) }}
+                      </span>
+                      <span
+                        v-if="observation.temperaturePrecision === 'tenth'"
+                        class="rounded border border-sky-400/25 bg-sky-400/10 px-1 py-0.5 text-[7px] font-semibold leading-none text-sky-200"
+                        title="Température METAR disponible au dixième de degré Celsius"
+                      >
+                        0,1°C
+                      </span>
                     </p>
                     <p class="mt-0.5 min-w-0 truncate text-[8px] font-medium text-slate-200">
                       {{ weatherConditionLabel(observation.condition || observation.cloudCover) }}

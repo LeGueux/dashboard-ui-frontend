@@ -29,6 +29,7 @@ export interface DustMarket {
 export interface WeatherObservation {
   timeLocal: string
   temperature: number | null
+  temperaturePrecision?: 'tenth' | 'whole'
   humidity?: number | null
   dewPoint?: number | null
   windSpeed?: number | null
