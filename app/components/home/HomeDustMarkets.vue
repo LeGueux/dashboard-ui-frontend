@@ -387,6 +387,30 @@ function hasMetarObservations(snapshot: WeatherSnapshot) {
   return snapshot.recentObservations?.some(observation => observation.source === 'metar') || false
 }
 
+function dailyMaximumTemperature(snapshot: WeatherSnapshot) {
+  const observations = (snapshot.recentObservations || [])
+    .map(observation => ({
+      ...observation,
+      localMinute: weatherLocalMinute(observation.timeLocal, snapshot.tz)
+    }))
+    .filter(observation => observation.localMinute !== null && observation.temperature !== null && Number.isFinite(Number(observation.temperature)))
+
+  if (!observations.length) return null
+
+  const latestLocalMinute = Math.max(...observations.map(observation => observation.localMinute!))
+  const latestDay = new Date(latestLocalMinute * 60_000).toISOString().slice(0, 10)
+  const temperatures = observations
+    .filter(observation => new Date(observation.localMinute! * 60_000).toISOString().slice(0, 10) === latestDay)
+    .map(observation => Number(observation.temperature))
+
+  return temperatures.length ? Math.max(...temperatures) : null
+}
+
+function isDailyMaximumTemperature(temperature: number | null, snapshot: WeatherSnapshot) {
+  const maximum = dailyMaximumTemperature(snapshot)
+  return maximum !== null && temperature !== null && Number(temperature) === maximum
+}
+
 function weatherLocalMinute(value: string, timeZone?: string | null) {
   const explicitOffset = /(?:Z|[+-]\d{2}:\d{2})$/i.test(value)
   if (explicitOffset && timeZone) {
@@ -1410,7 +1434,10 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     <span class="font-semibold text-slate-100">{{ weatherHour(observation.timeLocal, group.tz) }}</span>
                   </div>
                   <div class="mt-1 min-w-0">
-                    <p class="text-sm font-bold text-amber-100">
+                    <p
+                      class="text-sm font-bold"
+                      :class="isDailyMaximumTemperature(observation.temperature, weatherForGroup(group)!) ? 'text-rose-300' : 'text-amber-100'"
+                    >
                       {{ weatherTemperature(observation.temperature, weatherForGroup(group)!.unit) }}
                     </p>
                     <p class="mt-0.5 min-w-0 truncate text-[8px] font-medium text-slate-200">
