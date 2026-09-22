@@ -457,6 +457,8 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   const chartLeft = compactWeatherChart.value ? 34 : 42
   const chartRight = chartWidth - 10
   const plotWidth = chartRight - chartLeft
+  const chartTop = 25
+  const chartBottom = 135
   type ChartPoint = { timeLocal: string, temperature: number, kind?: 'observed' | 'forecast', label?: string, color?: string, modelId?: string }
   const basePoints: ChartPoint[] = (snapshot.sparkline || [])
     .filter(point => Number.isFinite(point.temperature))
@@ -467,12 +469,30 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
     .filter(point => Number.isFinite(point.temperature))
     .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: model.label, color: model.color, modelId: model.id })))
   const points = [...observations, ...(modelRows.length ? modelRows : fallbackForecast)]
-  const empty = { observed: '', forecast: '', spread: '', modelPaths: [], points: [], observedPoints: [], forecastPoints: [], axisPoints: [], boundaryX: null, peakPoint: null, min: null, middle: null, max: null, consensusMax: null, spreadMax: null, chartWidth, chartLeft, chartRight, labelX: chartLeft - 5 }
+  const empty = { observed: '', forecast: '', spread: '', modelPaths: [], points: [], observedPoints: [], forecastPoints: [], axisPoints: [], yAxisPoints: [], boundaryX: null, peakPoint: null, min: null, middle: null, max: null, consensusMax: null, spreadMax: null, chartWidth, chartLeft, chartRight, labelX: chartLeft - 5 }
   if (points.length < 2) return empty
   const values = points.map(point => point.temperature)
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const range = max - min || 1
+  const dataMin = Math.min(...values)
+  const dataMax = Math.max(...values)
+  const temperatureStep = snapshot.unit === 'F' ? 5 : 2
+  let min = Math.floor(dataMin / temperatureStep) * temperatureStep
+  let max = Math.ceil(dataMax / temperatureStep) * temperatureStep
+
+  // Conserve une échelle lisible même lorsque toutes les températures sont identiques.
+  if (min === max) {
+    min -= temperatureStep
+    max += temperatureStep
+  }
+
+  const range = max - min
+  const scaleTemperatureY = (temperature: number) => chartBottom - ((temperature - min) / range) * (chartBottom - chartTop)
+  const yAxisPoints = Array.from(
+    { length: Math.round(range / temperatureStep) + 1 },
+    (_, index) => {
+      const value = min + index * temperatureStep
+      return { value, y: scaleTemperatureY(value) }
+    }
+  )
   const localMinutes = points.map(point => weatherLocalMinute(point.timeLocal, snapshot.tz)).filter((value): value is number => value !== null)
   const validTimeline = localMinutes.length === points.length && new Set(localMinutes).size > 1
   const firstMinute = validTimeline ? Math.min(...localMinutes) : 0
@@ -481,7 +501,7 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   const coords = points.map((point, index) => ({
     ...point,
     x: chartLeft + ((validTimeline ? weatherLocalMinute(point.timeLocal, snapshot.tz)! - firstMinute : index) / minuteRange) * plotWidth,
-    y: 135 - ((point.temperature - min) / range) * 110,
+    y: scaleTemperatureY(point.temperature),
     chartWidth
   }))
   const path = (items: typeof coords) => items.map((point, index) => `${index ? 'L' : 'M'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ')
@@ -493,7 +513,7 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
     timeLocal, kind: 'forecast' as const, label: 'Consensus', color: '#e2e8f0',
     temperature: rows.reduce((sum, row) => sum + row.temperature, 0) / rows.length,
     x: rows[0]!.x,
-    y: 135 - (((rows.reduce((sum, row) => sum + row.temperature, 0) / rows.length) - min) / range) * 110,
+    y: scaleTemperatureY(rows.reduce((sum, row) => sum + row.temperature, 0) / rows.length),
     chartWidth
   })).sort((a, b) => a.x - b.x)
   const peakPoint = observedPoints.reduce<(typeof observedPoints)[number] | null>((peak, point) => !peak || point.temperature > peak.temperature ? point : peak, null)
@@ -507,8 +527,8 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   }).filter(model => model.path)
   const spreadRows = [...grouped.values()].filter(rows => rows.length > 1).map(rows => ({
     x: rows[0]!.x,
-    top: 135 - ((Math.max(...rows.map(row => row.temperature)) - min) / range) * 110,
-    bottom: 135 - ((Math.min(...rows.map(row => row.temperature)) - min) / range) * 110
+    top: scaleTemperatureY(Math.max(...rows.map(row => row.temperature))),
+    bottom: scaleTemperatureY(Math.min(...rows.map(row => row.temperature)))
   })).sort((a, b) => a.x - b.x)
   const spread = spreadRows.length > 1
     ? `M ${spreadRows.map(row => `${row.x.toFixed(1)} ${row.top.toFixed(1)}`).join(' L ')} L ${spreadRows.slice().reverse().map(row => `${row.x.toFixed(1)} ${row.bottom.toFixed(1)}`).join(' L ')} Z`
@@ -530,6 +550,7 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
     observedPoints,
     forecastPoints,
     axisPoints,
+    yAxisPoints,
     boundaryX: forecastPoints[0]?.x ?? null,
     peakPoint,
     min,
@@ -1228,12 +1249,12 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                 @pointerleave="hoveredWeatherPoint = null"
               >
                 <line
-                  v-for="y in [25, 80, 135]"
-                  :key="`grid-y-${y}`"
+                  v-for="tick in sparklineForGroup(group)!.yAxisPoints"
+                  :key="`grid-y-${tick.value}`"
                   :x1="sparklineForGroup(group)!.chartLeft"
-                  :y1="y"
+                  :y1="tick.y"
                   :x2="sparklineForGroup(group)!.chartRight"
-                  :y2="y"
+                  :y2="tick.y"
                   stroke="currentColor"
                   class="text-white/15"
                 />
@@ -1248,31 +1269,15 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   class="text-white/15"
                 />
                 <text
+                  v-for="tick in sparklineForGroup(group)!.yAxisPoints"
+                  :key="`axis-y-${tick.value}`"
                   :x="sparklineForGroup(group)!.labelX"
-                  y="28"
+                  :y="tick.y + 3"
                   text-anchor="end"
                   fill="currentColor"
                   class="text-[7px] font-medium text-slate-300"
                 >
-                  {{ weatherTemperature(sparklineForGroup(group)!.max, weatherForGroup(group)!.unit) }}
-                </text>
-                <text
-                  :x="sparklineForGroup(group)!.labelX"
-                  y="83"
-                  text-anchor="end"
-                  fill="currentColor"
-                  class="text-[7px] font-medium text-slate-300"
-                >
-                  {{ weatherTemperature(sparklineForGroup(group)!.middle, weatherForGroup(group)!.unit) }}
-                </text>
-                <text
-                  :x="sparklineForGroup(group)!.labelX"
-                  y="138"
-                  text-anchor="end"
-                  fill="currentColor"
-                  class="text-[7px] font-medium text-slate-300"
-                >
-                  {{ weatherTemperature(sparklineForGroup(group)!.min, weatherForGroup(group)!.unit) }}
+                  {{ weatherTemperature(tick.value, weatherForGroup(group)!.unit) }}
                 </text>
                 <line
                   v-if="sparklineForGroup(group)!.boundaryX != null"
