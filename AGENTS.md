@@ -36,3 +36,11 @@ Nuxt 4 dashboard frontend for displaying bot data.
 
 - `dashboard-ui-frontend/README.md`
 - `dashboard-ui-frontend/.github/workflows/ci.yml`
+
+## Validation
+
+- Prefer targeted validation during implementation.
+- Do not run `pnpm build` after every change.
+- Run `pnpm run lint` and `pnpm run typecheck` once before completing substantial changes.
+- For trivial or purely visual changes, run only the relevant checks.
+- Do not repeat a successful validation unless relevant code changed afterward.
