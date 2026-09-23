@@ -459,17 +459,21 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   const plotWidth = chartRight - chartLeft
   const chartTop = 25
   const chartBottom = 135
-  type ChartPoint = { timeLocal: string, temperature: number, kind?: 'observed' | 'forecast', label?: string, color?: string, modelId?: string }
+  type ChartPoint = { timeLocal: string, temperature: number, kind?: 'observed' | 'forecast', label?: string, color?: string, modelId?: string, primary?: boolean }
   const basePoints: ChartPoint[] = (snapshot.sparkline || [])
     .filter(point => Number.isFinite(point.temperature))
     .map(point => ({ ...point, temperature: Number(point.temperature) }))
   const observations = basePoints.filter(point => point.kind === 'observed')
   const fallbackForecast = basePoints.filter(point => point.kind === 'forecast')
+  const primaryRows: ChartPoint[] = (snapshot.hourly?.length ? snapshot.hourly.slice(0, 12) : fallbackForecast.slice(0, 12))
+    .filter(point => Number.isFinite(point.temperature))
+    .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: snapshot.sourceLabel, color: '#38bdf8', primary: true }))
   const modelRows: ChartPoint[] = (snapshot.forecastModels || []).flatMap(model => model.hourly.slice(0, 12)
     .filter(point => Number.isFinite(point.temperature))
     .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: model.label, color: model.color, modelId: model.id })))
-  const points = [...observations, ...(modelRows.length ? modelRows : fallbackForecast)]
-  const empty = { observed: '', forecast: '', spread: '', modelPaths: [], points: [], observedPoints: [], forecastPoints: [], axisPoints: [], yAxisPoints: [], boundaryX: null, peakPoint: null, min: null, middle: null, max: null, consensusMax: null, spreadMax: null, chartWidth, chartLeft, chartRight, labelX: chartLeft - 5 }
+  const forecastRows = [...primaryRows, ...modelRows]
+  const points = [...observations, ...(forecastRows.length ? forecastRows : fallbackForecast)]
+  const empty = { observed: '', forecast: '', primaryForecast: '', spread: '', modelPaths: [], points: [], observedPoints: [], forecastPoints: [], primaryPoints: [], axisPoints: [], yAxisPoints: [], boundaryX: null, peakPoint: null, min: null, middle: null, max: null, consensusMax: null, spreadMax: null, chartWidth, chartLeft, chartRight, labelX: chartLeft - 5 }
   if (points.length < 2) return empty
   const values = points.map(point => point.temperature)
   const dataMin = Math.min(...values)
@@ -506,11 +510,12 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   }))
   const path = (items: typeof coords) => items.map((point, index) => `${index ? 'L' : 'M'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ')
   const observedPoints = coords.filter(point => point.kind === 'observed')
-  const rawForecastPoints = coords.filter(point => point.kind === 'forecast')
+  const rawForecastPoints = coords.filter(point => point.kind === 'forecast' && point.modelId)
+  const primaryPoints = coords.filter(point => point.primary)
   const grouped = new Map<string, typeof rawForecastPoints>()
   for (const point of rawForecastPoints) grouped.set(point.timeLocal, [...(grouped.get(point.timeLocal) || []), point])
   const forecastPoints = [...grouped.entries()].map(([timeLocal, rows]) => ({
-    timeLocal, kind: 'forecast' as const, label: 'Consensus', color: '#e2e8f0',
+    timeLocal, kind: 'forecast' as const, label: 'Moyenne des modèles', color: '#e2e8f0',
     temperature: rows.reduce((sum, row) => sum + row.temperature, 0) / rows.length,
     x: rows[0]!.x,
     y: scaleTemperatureY(rows.reduce((sum, row) => sum + row.temperature, 0) / rows.length),
@@ -520,6 +525,9 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   const forecastPathPoints = observedPoints.length && forecastPoints.length
     ? [observedPoints.at(-1)!, ...forecastPoints]
     : forecastPoints
+  const primaryPathPoints = observedPoints.length && primaryPoints.length
+    ? [observedPoints.at(-1)!, ...primaryPoints]
+    : primaryPoints
   const modelPaths = (snapshot.forecastModels || []).map((model) => {
     const modelPoints = coords.filter(point => point.modelId === model.id).sort((a, b) => a.x - b.x)
     const linked = observedPoints.length && modelPoints.length ? [observedPoints.at(-1)!, ...modelPoints] : modelPoints
@@ -545,13 +553,14 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
         .map(point => ({ ...point, label: null }))
   return {
     observed: path(observedPoints),
-    forecast: path(forecastPathPoints), spread, modelPaths,
-    points: [...observedPoints, ...forecastPoints],
+    forecast: path(forecastPathPoints), primaryForecast: path(primaryPathPoints), spread, modelPaths,
+    points: [...observedPoints, ...primaryPoints],
     observedPoints,
     forecastPoints,
+    primaryPoints,
     axisPoints,
     yAxisPoints,
-    boundaryX: forecastPoints[0]?.x ?? null,
+    boundaryX: primaryPoints[0]?.x ?? forecastPoints[0]?.x ?? null,
     peakPoint,
     min,
     middle: min + range / 2,
@@ -1333,10 +1342,21 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   :d="sparklineForGroup(group)!.forecast"
                   fill="none"
                   stroke="currentColor"
-                  stroke-width="2.4"
+                  stroke-width="1.8"
+                  stroke-dasharray="5 3"
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  class="text-slate-100"
+                  class="text-slate-100/85"
+                />
+                <path
+                  v-if="sparklineForGroup(group)!.primaryForecast"
+                  :d="sparklineForGroup(group)!.primaryForecast"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="text-sky-300"
                 />
                 <circle
                   v-for="point in sparklineForGroup(group)!.observedPoints"
@@ -1372,7 +1392,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                 </text>
                 <circle
                   v-for="point in sparklineForGroup(group)!.points"
-                  :key="`hover-${point.kind}-${point.timeLocal}`"
+                  :key="`hover-${point.kind}-${point.label || 'default'}-${point.timeLocal}`"
                   :cx="point.x"
                   :cy="point.y"
                   r="9"
@@ -1434,13 +1454,15 @@ function getResolutionBadgeForGroup(group: CityGroup) {
               <div class="flex flex-wrap items-center justify-between gap-1 border-t border-white/15 px-1 py-1.5 text-[9px] font-medium text-slate-200">
                 <div class="flex items-center gap-2">
                   <span v-if="weatherForGroup(group)!.recentObservations?.length" class="inline-flex items-center gap-1"><span class="h-0.5 w-3 bg-amber-300" /> Mesuré</span>
+                  <span v-if="sparklineForGroup(group)!.primaryPoints.length" class="inline-flex items-center gap-1">
+                    <span class="w-3 border-t-[3px] border-sky-300" /> {{ weatherForGroup(group)!.sourceLabel }}
+                  </span>
                   <span v-if="weatherForGroup(group)!.forecastModels?.length" class="inline-flex flex-wrap items-center gap-2">
                     <span v-for="model in weatherForGroup(group)!.forecastModels" :key="model.id" class="inline-flex items-center gap-1">
                       <span class="w-3 border-t border-dashed" :style="{ borderColor: model.color }" /> {{ model.label }}
                     </span>
-                    <span class="inline-flex items-center gap-1"><span class="w-3 border-t-2 border-slate-100" /> Consensus</span>
+                    <span class="inline-flex items-center gap-1"><span class="w-3 border-t border-dashed border-slate-100" /> Moyenne modèles</span>
                   </span>
-                  <span v-else-if="weatherForGroup(group)!.hourly?.length" class="inline-flex items-center gap-1"><span class="w-3 border-t-2 border-dashed border-sky-300" /> Prévision</span>
                 </div>
                 <span v-if="signalForGroup(group)" class="min-w-0 truncate" :title="signalForGroup(group)!.reason">{{ weatherSignalLabel(signalForGroup(group)!) }}</span>
               </div>
