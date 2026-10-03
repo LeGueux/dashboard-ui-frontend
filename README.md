@@ -42,7 +42,21 @@ Si elle n'est pas definie, Nuxt utilise la valeur par defaut configuree dans [nu
 pnpm dev
 ```
 
-Le dashboard est servi sur `http://localhost:3000` par defaut.
+Le dashboard est servi sur `http://localhost:3005` par defaut.
+
+Pour utiliser `ingest-backend` en local, definir dans le `.env` du frontend :
+
+```bash
+NUXT_PUBLIC_INGEST_BACKEND_URL=http://localhost:3001
+```
+
+Dans le `.env` de `ingest-backend`, autoriser l'origine du dashboard :
+
+```bash
+UI_ORIGIN=http://localhost:3005
+```
+
+Redemarrer les services apres modification de leurs variables d'environnement. L'origine CORS doit correspondre exactement a l'adresse du dashboard, port compris.
 
 ## Commandes utiles
 

@@ -55,9 +55,12 @@ const shortStatusLabel = computed(() => {
             <span class="grid size-8 shrink-0 place-items-center rounded-lg border border-cyan-300/20 bg-gradient-to-br from-cyan-400/20 to-emerald-400/10 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
               <UIcon name="i-lucide-cloud-sun" class="size-4.5 text-cyan-200" />
             </span>
-            <span class="truncate text-sm font-bold tracking-tight text-white sm:text-base">
-              Dust Weather
-            </span>
+            <div class="flex min-w-0 flex-col gap-0.5">
+              <span class="truncate text-sm font-bold tracking-tight text-white sm:text-base">
+                Dust Weather
+              </span>
+              <span class="font-mono text-[10px] leading-none tabular-nums text-slate-400">v{{ appVersion }}</span>
+            </div>
           </div>
         </template>
 
@@ -110,8 +113,6 @@ const shortStatusLabel = computed(() => {
             >
               <span class="hidden xl:inline">Wiki météo</span>
             </UButton>
-
-            <span class="hidden font-mono text-[10px] tabular-nums text-slate-500 2xl:inline">v{{ appVersion }}</span>
           </div>
         </template>
       </UDashboardNavbar>

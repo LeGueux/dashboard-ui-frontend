@@ -2,13 +2,6 @@
 import pkg from './package.json'
 
 export default defineNuxtConfig({
-  runtimeConfig: {
-    public: {
-      ingestBackendUrl: '',
-      appVersion: pkg.version
-    }
-  },
-
   modules: [
     '@nuxt/eslint',
     '@nuxt/ui',
@@ -21,11 +14,19 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  runtimeConfig: {
+    public: {
+      ingestBackendUrl: '',
+      appVersion: pkg.version
+    }
+  },
+
   routeRules: {
     '/api/**': {
       cors: true
     }
   },
+  devServer: { port: 3005 },
 
   compatibilityDate: '2024-07-11',
 
