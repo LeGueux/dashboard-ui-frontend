@@ -223,11 +223,6 @@ function toggleTz(tz: string) {
 function isTzCollapsed(tz: string) {
   return collapsedTz.value.has(tz)
 }
-
-const copyToClipboard = async (text: string) => {
-  await navigator.clipboard.writeText(text)
-  // TODO: Show toast notification
-}
 </script>
 
 <template>
@@ -240,7 +235,15 @@ const copyToClipboard = async (text: string) => {
         >
           <template #right>
             <div class="flex items-center gap-2 text-xs">
-              <UButton to="/" color="neutral" variant="soft" size="xs" icon="i-lucide-arrow-left">Dashboard</UButton>
+              <UButton
+                to="/"
+                color="neutral"
+                variant="soft"
+                size="xs"
+                icon="i-lucide-arrow-left"
+              >
+                Dashboard
+              </UButton>
               <span class="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-slate-200">
                 {{ filteredLinks.length }} / {{ totalAirports }} aéroports
               </span>
@@ -266,7 +269,7 @@ const copyToClipboard = async (text: string) => {
             >
               Réinitialiser filtres
             </button>
-              <span class="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200">
+            <span class="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200">
               {{ activeFilteredLinks.length }} résultats
             </span>
           </div>
@@ -275,57 +278,93 @@ const copyToClipboard = async (text: string) => {
           <div class="flex flex-wrap gap-2 text-xs">
             <!-- Unité -->
             <select v-model="filterUnit" class="h-7 rounded-md border border-white/15 bg-slate-900 px-2 text-slate-100 outline-none transition focus:border-primary-400/60 [&>option]:bg-slate-900">
-              <option value="">Toutes unités</option>
-              <option value="C">°C</option>
-              <option value="F">°F</option>
+              <option value="">
+                Toutes unités
+              </option>
+              <option value="C">
+                °C
+              </option>
+              <option value="F">
+                °F
+              </option>
             </select>
 
             <!-- Statut trading -->
             <select v-model="filterTrading" class="h-7 rounded-md border border-white/15 bg-slate-900 px-2 text-slate-100 outline-none transition focus:border-primary-400/60 [&>option]:bg-slate-900">
-              <option value="">Tradable + Ignored</option>
-              <option value="tradable">Tradable uniquement</option>
-              <option value="ignored">Ignored uniquement</option>
+              <option value="">
+                Tradable + Ignored
+              </option>
+              <option value="tradable">
+                Tradable uniquement
+              </option>
+              <option value="ignored">
+                Ignored uniquement
+              </option>
             </select>
 
             <!-- Région -->
             <select v-model="filterRegion" class="h-7 rounded-md border border-white/15 bg-slate-900 px-2 text-slate-100 outline-none transition focus:border-primary-400/60 [&>option]:bg-slate-900">
-              <option value="">Toutes régions</option>
-              <option value="Asia">Asie / Pacifique</option>
-              <option value="Europe">Europe</option>
-              <option value="America">Amérique</option>
-              <option value="Africa">Afrique</option>
-              <option value="Pacific">Pacifique (îles)</option>
+              <option value="">
+                Toutes régions
+              </option>
+              <option value="Asia">
+                Asie / Pacifique
+              </option>
+              <option value="Europe">
+                Europe
+              </option>
+              <option value="America">
+                Amérique
+              </option>
+              <option value="Africa">
+                Afrique
+              </option>
+              <option value="Pacific">
+                Pacifique (îles)
+              </option>
             </select>
 
             <!-- Heure trading max -->
             <label class="flex items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-2 h-7 text-slate-100">
               Trading ≤
-              <input v-model.number="filterTradingHourMax" type="number" min="0" max="24" class="w-12 bg-transparent text-white outline-none text-center" />
+              <input
+                v-model.number="filterTradingHourMax"
+                type="number"
+                min="0"
+                max="24"
+                class="w-12 bg-transparent text-white outline-none text-center"
+              >
               h
             </label>
 
             <!-- Heure dust max -->
             <label class="flex items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-2 h-7 text-slate-100">
               Dust ≤
-              <input v-model.number="filterDustHourMax" type="number" min="0" max="24" class="w-12 bg-transparent text-white outline-none text-center" />
+              <input
+                v-model.number="filterDustHourMax"
+                type="number"
+                min="0"
+                max="24"
+                class="w-12 bg-transparent text-white outline-none text-center"
+              >
               h
             </label>
 
             <!-- Filtres liens -->
             <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasWU ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-100 hover:bg-white/10'">
-              <input v-model="filterHasWU" type="checkbox" class="sr-only" />
+              <input v-model="filterHasWU" type="checkbox" class="sr-only">
               WU
             </label>
             <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasWETHR ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-100 hover:bg-white/10'">
-              <input v-model="filterHasWETHR" type="checkbox" class="sr-only" />
+              <input v-model="filterHasWETHR" type="checkbox" class="sr-only">
               WETHR
             </label>
             <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasMETAR ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-100 hover:bg-white/10'">
-              <input v-model="filterHasMETAR" type="checkbox" class="sr-only" />
+              <input v-model="filterHasMETAR" type="checkbox" class="sr-only">
               METAR
             </label>
             <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasNWS ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-100 hover:bg-white/10'">
-              <input v-model="filterHasNWS" type="checkbox" class="sr-only" />
+              <input v-model="filterHasNWS" type="checkbox" class="sr-only">
               NWS
             </label>
           </div>
@@ -393,7 +432,7 @@ const copyToClipboard = async (text: string) => {
               </div>
             </button>
 
-            <div class="px-4 pb-2 text-[11px] text-slate-300 border-t border-white/5" v-if="group.tzSummary">
+            <div v-if="group.tzSummary" class="px-4 pb-2 text-[11px] text-slate-300 border-t border-white/5">
               {{ group.tzSummary }}
             </div>
 

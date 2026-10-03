@@ -4,15 +4,17 @@ Frontend Nuxt 4 du dashboard Polymarket Dust. L'application affiche les marches 
 
 ## Prerequis
 
-- Node.js 24 ou plus recent
+- Node.js 24.11 ou plus recent
 - pnpm, via Corepack recommande
 
 ```bash
 corepack enable
-corepack prepare pnpm@11.23.0 --activate
+corepack prepare pnpm@12.8.1 --activate
 ```
 
 Le gestionnaire de paquets officiel est `pnpm`. Le fichier de lock a conserver est [pnpm-lock.yaml](pnpm-lock.yaml). Ne pas utiliser `npm install`, qui genere un `package-lock.json` concurrent.
+
+Les dependances directes utilisent des versions stables. TypeScript reste en `6.0.3`, derniere version compatible avec `typescript-eslint` et `vue-tsc`. `@tanstack/table-core` reste en `8.21.3` pour correspondre a l'API utilisee par Nuxt UI. Certaines dependances transitives du framework (notamment `h3`, `ofetch` et `unenv`) sont imposees en prerelease par les versions stables de Nuxt et Nitro.
 
 ## Installation
 
