@@ -226,304 +226,158 @@ function isTzCollapsed(tz: string) {
 </script>
 
 <template>
-  <UDashboardPanel id="weather-links" :ui="{ body: 'lg:py-12' }">
-    <template #header>
-      <div class="space-y-1">
-        <UDashboardNavbar
-          title="Weather Links Wiki"
-          :ui="{ title: 'text-white font-semibold tracking-wide' }"
-        >
-          <template #right>
-            <div class="flex items-center gap-2 text-xs">
-              <UButton
-                to="/"
-                color="neutral"
-                variant="soft"
-                size="xs"
-                icon="i-lucide-arrow-left"
-              >
-                Dashboard
-              </UButton>
-              <span class="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-slate-200">
-                {{ filteredLinks.length }} / {{ totalAirports }} aéroports
-              </span>
-            </div>
-          </template>
-        </UDashboardNavbar>
-
-        <div class="px-4 sm:px-6 space-y-2">
-          <!-- Search + reset -->
-          <div class="flex items-center gap-2">
-            <UInput
-              v-model="searchQuery"
-              placeholder="Rechercher par code ICAO ou ville..."
-              icon="i-lucide-search"
-              color="neutral"
-              variant="soft"
-              class="flex-1 max-w-sm"
-            />
-            <button
-              v-if="hasActiveFilters"
-              class="rounded-full border border-rose-400/40 bg-rose-400/10 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-400/20 transition-colors"
-              @click="resetFilters"
-            >
-              Réinitialiser filtres
-            </button>
-            <span class="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-slate-200">
-              {{ activeFilteredLinks.length }} résultats
-            </span>
-          </div>
-
-          <!-- Filters row -->
-          <div class="flex flex-wrap gap-2 text-xs">
-            <!-- Unité -->
-            <select v-model="filterUnit" class="h-7 rounded-md border border-white/15 bg-slate-900 px-2 text-slate-100 outline-none transition focus:border-primary-400/60 [&>option]:bg-slate-900">
-              <option value="">
-                Toutes unités
-              </option>
-              <option value="C">
-                °C
-              </option>
-              <option value="F">
-                °F
-              </option>
-            </select>
-
-            <!-- Statut trading -->
-            <select v-model="filterTrading" class="h-7 rounded-md border border-white/15 bg-slate-900 px-2 text-slate-100 outline-none transition focus:border-primary-400/60 [&>option]:bg-slate-900">
-              <option value="">
-                Tradable + Ignored
-              </option>
-              <option value="tradable">
-                Tradable uniquement
-              </option>
-              <option value="ignored">
-                Ignored uniquement
-              </option>
-            </select>
-
-            <!-- Région -->
-            <select v-model="filterRegion" class="h-7 rounded-md border border-white/15 bg-slate-900 px-2 text-slate-100 outline-none transition focus:border-primary-400/60 [&>option]:bg-slate-900">
-              <option value="">
-                Toutes régions
-              </option>
-              <option value="Asia">
-                Asie / Pacifique
-              </option>
-              <option value="Europe">
-                Europe
-              </option>
-              <option value="America">
-                Amérique
-              </option>
-              <option value="Africa">
-                Afrique
-              </option>
-              <option value="Pacific">
-                Pacifique (îles)
-              </option>
-            </select>
-
-            <!-- Heure trading max -->
-            <label class="flex items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-2 h-7 text-slate-100">
-              Trading ≤
-              <input
-                v-model.number="filterTradingHourMax"
-                type="number"
-                min="0"
-                max="24"
-                class="w-12 bg-transparent text-white outline-none text-center"
-              >
-              h
-            </label>
-
-            <!-- Heure dust max -->
-            <label class="flex items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-2 h-7 text-slate-100">
-              Dust ≤
-              <input
-                v-model.number="filterDustHourMax"
-                type="number"
-                min="0"
-                max="24"
-                class="w-12 bg-transparent text-white outline-none text-center"
-              >
-              h
-            </label>
-
-            <!-- Filtres liens -->
-            <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasWU ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-100 hover:bg-white/10'">
-              <input v-model="filterHasWU" type="checkbox" class="sr-only">
-              WU
-            </label>
-            <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasWETHR ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-100 hover:bg-white/10'">
-              <input v-model="filterHasWETHR" type="checkbox" class="sr-only">
-              WETHR
-            </label>
-            <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasMETAR ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-100 hover:bg-white/10'">
-              <input v-model="filterHasMETAR" type="checkbox" class="sr-only">
-              METAR
-            </label>
-            <label class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2 h-7 transition-colors" :class="filterHasNWS ? 'border-sky-400/50 bg-sky-400/15 text-sky-200' : 'border-white/15 bg-white/5 text-slate-100 hover:bg-white/10'">
-              <input v-model="filterHasNWS" type="checkbox" class="sr-only">
-              NWS
-            </label>
-          </div>
+  <main class="observatory">
+    <header class="workspace-nav">
+      <NuxtLink to="/" class="wordmark">
+        <UIcon name="i-lucide-cloud-sun" class="size-6" />
+        <span>DUST<span class="wordmark-sub">OBSERVATOIRE MÉTÉO</span></span>
+      </NuxtLink>
+      <nav class="workspace-tabs" aria-label="Navigation principale">
+        <NuxtLink to="/">Tableau de veille</NuxtLink>
+        <NuxtLink to="/weather-links" aria-current="page">Stations & sources</NuxtLink>
+      </nav>
+      <span class="workspace-version">RÉPERTOIRE</span>
+    </header>
+    <div class="workspace-content station-directory">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">
+            RÉSEAU D'OBSERVATION
+          </p>
+          <h1>Stations & sources</h1>
+          <p class="page-description">
+            {{ totalAirports }} stations référencées · classées par heure locale
+          </p>
         </div>
+        <UInput
+          v-model="searchQuery"
+          placeholder="Ville ou code ICAO"
+          icon="i-lucide-search"
+          aria-label="Rechercher une station"
+          class="directory-search"
+        />
       </div>
-    </template>
-
-    <template #body>
-      <div class="w-full">
-        <!-- Loading state -->
-        <div v-if="loading" class="space-y-4">
-          <div v-for="n in 3" :key="n" class="h-16 bg-white/5 rounded-lg animate-pulse" />
-        </div>
-
-        <!-- Error state -->
-        <UAlert
-          v-else-if="error"
-          color="error"
-          icon="i-lucide-alert-circle"
-          title="Erreur"
-          :description="error"
-          class="mb-4"
-        />
-
-        <!-- Empty state -->
-        <UAlert
-          v-else-if="filteredLinks.length === 0"
-          color="warning"
-          icon="i-lucide-info"
-          title="Aucun lien trouvé"
-          description="Les liens météo seront remplis à mesure que les bets dust seront détectés."
-          class="mb-4"
-        />
-
-        <!-- Links grouped by timezone -->
-        <div v-else class="space-y-3">
-          <section
-            v-for="group in groupedByTimezone"
-            :key="group.key"
-            class="rounded-xl border border-white/10 bg-white/5 overflow-hidden"
+      <div class="directory-filters">
+        <label><span>Unité</span><select v-model="filterUnit"><option value="">Toutes</option><option value="C">°C</option><option value="F">°F</option></select></label>
+        <label><span>Trading</span><select v-model="filterTrading"><option value="">Tous statuts</option><option value="tradable">Autorisé</option><option value="ignored">Ignoré</option></select></label>
+        <label><span>Région</span><select v-model="filterRegion"><option value="">Toutes régions</option><option value="Asia">Asie / Pacifique</option><option value="Europe">Europe</option><option value="America">Amérique</option><option value="Africa">Afrique</option><option value="Pacific">Pacifique (îles)</option></select></label>
+        <label><span>Trading ≤</span><input
+          v-model.number="filterTradingHourMax"
+          type="number"
+          min="0"
+          max="24"
+          aria-label="Heure trading maximale"
+        > h</label>
+        <label><span>Dust ≤</span><input
+          v-model.number="filterDustHourMax"
+          type="number"
+          min="0"
+          max="24"
+          aria-label="Heure dust maximale"
+        > h</label>
+        <fieldset class="source-filters">
+          <legend>Sources disponibles</legend>
+          <label><input v-model="filterHasWU" type="checkbox">WU</label>
+          <label><input v-model="filterHasWETHR" type="checkbox">WETHR</label>
+          <label><input v-model="filterHasMETAR" type="checkbox">METAR</label>
+          <label><input v-model="filterHasNWS" type="checkbox">NWS</label>
+        </fieldset>
+      </div>
+      <div class="directory-results">
+        <span>{{ activeFilteredLinks.length }} stations affichées</span><button v-if="hasActiveFilters" type="button" @click="resetFilters">
+          Réinitialiser les filtres
+        </button><span class="directory-key">T : début trading · D : début dust · heures locales</span>
+      </div>
+      <div v-if="loading" class="directory-loading">
+        Chargement des stations…
+      </div>
+      <UAlert
+        v-else-if="error"
+        color="error"
+        title="Connexion indisponible"
+        :description="error"
+      />
+      <div v-else-if="!activeFilteredLinks.length" class="directory-loading">
+        Aucune station ne correspond à cette recherche.
+      </div>
+      <div v-else class="timezone-directory">
+        <section v-for="group in groupedByTimezone" :key="group.key" class="timezone-group">
+          <button
+            type="button"
+            class="timezone-heading"
+            :aria-expanded="!isTzCollapsed(group.key)"
+            @click="toggleTz(group.key)"
           >
-            <!-- Header cliquable pour replier -->
-            <button
-              type="button"
-              class="w-full flex flex-wrap items-center justify-between gap-2 px-4 py-3 hover:bg-white/5 transition-colors text-left"
-              @click="toggleTz(group.key)"
-            >
-              <div class="flex items-center gap-3">
-                <UIcon
-                  :name="isTzCollapsed(group.key) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
-                  class="size-4 shrink-0 text-slate-400"
-                />
-                <span class="text-sm font-semibold text-sky-200">Heure locale {{ groupNowText(group) }}</span>
-              </div>
-              <div class="flex items-center gap-2 text-xs">
-                <span class="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-slate-100">
-                  {{ group.offsetText }}
-                </span>
-                <span class="rounded-full border border-sky-300/30 bg-sky-300/10 px-2 py-0.5 font-mono text-sky-100">
-                  {{ groupNowText(group) }}
-                </span>
-                <span class="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-slate-100">
-                  {{ group.airports.length }} stations
-                </span>
-              </div>
-            </button>
-
-            <div v-if="group.tzSummary" class="px-4 pb-2 text-[11px] text-slate-300 border-t border-white/5">
-              {{ group.tzSummary }}
-            </div>
-
-            <!-- Corps repliable -->
-            <div v-if="!isTzCollapsed(group.key)" class="border-t border-white/10 p-3">
-              <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                <div
-                  v-for="airport in group.airports"
-                  :key="airport.code"
-                  class="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors"
-                >
-                  <!-- En-tête: code + ville + heure -->
-                  <div class="flex items-start justify-between gap-2 mb-2">
-                    <div class="min-w-0">
-                      <div class="font-mono font-bold text-sm text-sky-300 leading-none">
-                        {{ airport.code }}
-                      </div>
-                      <div v-if="airport.city" class="text-xs text-slate-100 mt-0.5 truncate">
-                        {{ airport.city }}
-                      </div>
-                    </div>
-                    <span class="rounded-full border border-sky-300/30 bg-sky-300/10 px-2 py-0.5 font-mono text-[11px] text-sky-100 shrink-0">
-                      {{ airportLocalNow(airport) }}
-                    </span>
-                  </div>
-
-                  <!-- Badges infos -->
-                  <div class="flex flex-wrap gap-1 mb-2 text-[10px]">
-                    <span class="rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-slate-200">
-                      T {{ timeLabel(airport.airportData?.tradingMinLocalHour, airport.airportData?.tradingMinLocalMinute) }}
-                    </span>
-                    <span class="rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-slate-200">
+            <UIcon :name="isTzCollapsed(group.key) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'" class="size-4" />
+            <strong>{{ group.offsetText }}</strong><span class="timezone-clock">{{ groupNowText(group) }}</span><span>{{ group.airports.length }} stations</span><span class="timezone-names">{{ group.tzSummary }}</span>
+          </button>
+          <div v-if="!isTzCollapsed(group.key)" class="directory-table-wrap">
+            <table class="directory-table">
+              <thead>
+                <tr>
+                  <th scope="col">
+                    Station / ville
+                  </th><th scope="col">
+                    Heure locale
+                  </th><th scope="col">
+                    T / D
+                  </th><th scope="col">
+                    Unité
+                  </th><th scope="col">
+                    Trading
+                  </th><th scope="col">
+                    Sources météo
+                  </th><th scope="col">
+                    Résolution Polymarket
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="airport in group.airports" :key="airport.code">
+                  <th scope="row">
+                    <span class="station-code">{{ airport.code }}</span><span class="directory-city">{{ airport.city || 'Ville non renseignée' }}</span>
+                  </th>
+                  <td class="directory-time">
+                    {{ airportLocalNow(airport) }}
+                  </td>
+                  <td class="directory-time">
+                    <div>T {{ timeLabel(airport.airportData?.tradingMinLocalHour, airport.airportData?.tradingMinLocalMinute) }}</div><div class="text-slate-500">
                       D {{ timeLabel(airport.airportData?.dustMinLocalHour, airport.airportData?.dustMinLocalMinute) }}
-                    </span>
-                    <span class="rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-slate-200">
-                      {{ airport.airportData?.unit || '-' }}
-                    </span>
-                    <span
-                      class="rounded border px-1.5 py-0.5"
-                      :class="airport.airportData?.ignoreForTrading ? 'border-amber-400/30 bg-amber-400/10 text-amber-300' : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'"
-                    >
-                      {{ airport.airportData?.ignoreForTrading ? 'Ignored' : 'OK' }}
-                    </span>
-                  </div>
-
-                  <!-- Sources de resolution declarees par Polymarket, par date. -->
-                  <div v-if="airport.resolutionSources?.length" class="mb-2 space-y-1">
-                    <a
-                      v-for="source in airport.resolutionSources"
-                      :key="source.eventSlug || `${source.date}-${source.resolutionSource}`"
-                      :href="source.resolutionSource || undefined"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="flex items-center justify-between gap-2 rounded border px-2 py-1 text-[10px] transition-colors"
-                      :class="source.matchesAirportCode === false
-                        ? 'border-rose-400/40 bg-rose-400/10 text-rose-200 hover:bg-rose-400/20'
-                        : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200 hover:bg-emerald-400/20'"
-                    >
-                      <span class="min-w-0 truncate">
-                        Resolution {{ source.date || 'date inconnue' }} · {{ source.resolutionProvider || 'source inconnue' }}
-                      </span>
-                      <span class="flex shrink-0 items-center gap-1 font-mono">
-                        {{ source.resolutionAirportCode || '?' }}
-                        <UIcon
-                          :name="source.matchesAirportCode === false ? 'i-lucide-triangle-alert' : 'i-lucide-external-link'"
-                          class="size-3"
-                        />
-                      </span>
-                    </a>
-                  </div>
-
-                  <!-- Liens compacts inline -->
-                  <div class="flex flex-wrap gap-1">
-                    <a
-                      v-for="link in airport.links"
-                      :key="`${airport.code}-${link.label}`"
-                      :href="link.url"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="inline-flex items-center gap-1 rounded border border-white/20 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-white/75 hover:text-white hover:border-white/40 hover:bg-white/15 transition-colors"
-                    >
-                      {{ link.label }}
-                      <UIcon name="i-lucide-external-link" class="size-2.5 shrink-0" />
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
+                    </div>
+                  </td>
+                  <td>{{ airport.airportData?.unit ? `°${airport.airportData.unit}` : '—' }}</td>
+                  <td :class="airport.airportData?.ignoreForTrading ? 'trading-ignored' : 'trading-allowed'">
+                    {{ airport.airportData?.ignoreForTrading ? 'Ignoré' : 'Autorisé' }}
+                  </td>
+                  <td>
+                    <div class="directory-links">
+                      <a
+                        v-for="link in airport.links"
+                        :key="`${airport.code}-${link.label}`"
+                        :href="link.url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >{{ link.label }}<UIcon name="i-lucide-arrow-up-right" class="size-3" /></a><span v-if="!airport.links?.length">—</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div v-if="airport.resolutionSources?.length" class="resolution-links">
+                      <a
+                        v-for="source in airport.resolutionSources"
+                        :key="source.eventSlug || `${source.date}-${source.resolutionSource}`"
+                        :href="source.resolutionSource || undefined"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        :class="{ 'resolution-warning': source.matchesAirportCode === false }"
+                      ><span>{{ source.date || 'Date inconnue' }} · {{ source.resolutionProvider || 'Source inconnue' }}</span><strong>{{ source.resolutionAirportCode || '?' }}</strong><UIcon :name="source.matchesAirportCode === false ? 'i-lucide-triangle-alert' : 'i-lucide-arrow-up-right'" class="size-3" /></a>
+                    </div><span v-else>—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
-    </template>
-  </UDashboardPanel>
+    </div>
+  </main>
 </template>

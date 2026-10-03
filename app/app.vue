@@ -1,5 +1,7 @@
 <script setup lang="ts">
 const colorMode = useColorMode()
+// La veille utilise un thème clair constant pour comparer les stations.
+colorMode.preference = 'light'
 
 const color = computed(() => colorMode.value === 'dark' ? '#1b1718' : 'white')
 
@@ -13,7 +15,7 @@ useHead({
     { rel: 'icon', href: '/favicon.ico' }
   ],
   htmlAttrs: {
-    lang: 'en'
+    lang: 'fr'
   }
 })
 

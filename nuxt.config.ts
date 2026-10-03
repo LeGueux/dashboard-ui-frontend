@@ -29,6 +29,9 @@ export default defineNuxtConfig({
   devServer: { port: 3005 },
 
   compatibilityDate: '2024-07-11',
+  vite: {
+    cacheDir: '.nuxt/vite-cache'
+  },
 
   eslint: {
     config: {

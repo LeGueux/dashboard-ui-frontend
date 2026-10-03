@@ -388,10 +388,10 @@ function weatherFreshness(snapshot: WeatherSnapshot) {
 }
 
 function signalTone(status: WeatherTradingSignal['status']) {
-  if (status === 'safe') return 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
-  if (status === 'watch') return 'border-amber-400/30 bg-amber-400/10 text-amber-200'
-  if (status === 'risk') return 'border-rose-400/30 bg-rose-400/10 text-rose-200'
-  return 'border-slate-400/30 bg-slate-400/10 text-slate-300'
+  if (status === 'safe') return 'border-emerald-400/30 bg-emerald-400/10 text-emerald-700'
+  if (status === 'watch') return 'border-amber-400/30 bg-amber-400/10 text-amber-700'
+  if (status === 'risk') return 'border-rose-400/30 bg-rose-400/10 text-rose-700'
+  return 'border-slate-400/30 bg-slate-400/10 text-slate-600'
 }
 
 function weatherSignalLabel(signal: WeatherTradingSignal) {
@@ -902,13 +902,11 @@ function getResolutionBadgeForGroup(group: CityGroup) {
 </script>
 
 <template>
-  <UCard
-    class="border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 shadow-xl shadow-slate-950/30"
-  >
-    <template #header>
-      <div class="flex flex-col gap-2 border-b border-white/10 pb-2">
+  <div class="station-board">
+    <div class="board-controls">
+      <div class="flex flex-col gap-2 border-b border-slate-200 pb-2">
         <div class="flex flex-wrap items-center gap-1.5 text-xs">
-          <span class="mr-1 inline-flex items-center gap-1 font-semibold text-slate-300">
+          <span class="mr-1 inline-flex items-center gap-1 font-semibold text-slate-600">
             <UIcon name="i-lucide-list-filter" class="size-3.5" />
             Marchés
           </span>
@@ -931,12 +929,12 @@ function getResolutionBadgeForGroup(group: CityGroup) {
             aria-label="Masquer les températures avec uniquement des asks à 99.9 cents"
             @click="hideOnly999Asks = !hideOnly999Asks"
           >
-            Hide 99.9 only
+            Masquer les asks à 99,9¢
           </UButton>
         </div>
 
-        <details class="group mt-2 rounded-lg border border-white/10 bg-black/15">
-          <summary class="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-xs text-slate-200">
+        <details class="group mt-2 rounded-sm border border-slate-200 bg-slate-50">
+          <summary class="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-xs text-slate-700">
             <span class="inline-flex items-center gap-1">
               <UIcon name="i-lucide-sliders-horizontal" class="size-3.5" />
               Aide & outils
@@ -944,24 +942,24 @@ function getResolutionBadgeForGroup(group: CityGroup) {
             <UIcon name="i-lucide-chevron-down" class="size-4 transition-transform group-open:rotate-180" />
           </summary>
 
-          <div class="border-t border-white/10 p-3 text-xs text-slate-300">
+          <div class="border-t border-slate-200 p-3 text-xs text-slate-600">
             <div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
-              <div class="rounded-md border border-white/10 bg-white/5 p-2.5">
-                <p class="font-semibold text-slate-100">
+              <div class="rounded-md border border-slate-200 bg-slate-50 p-2.5">
+                <p class="font-semibold text-slate-700">
                   Affichage
                 </p>
                 <div class="mt-2 space-y-1">
-                  <p class="text-slate-300">
+                  <p class="text-slate-600">
                     <span class="rounded bg-primary/15 px-1 py-0.5 text-primary">Tous</span>:
                     affiche tous les marchés sans filtre.
                   </p>
-                  <p class="text-slate-300">
-                    <span class="rounded bg-rose-400/15 px-1 py-0.5 text-rose-200">Hide 99.9 only</span>:
+                  <p class="text-slate-600">
+                    <span class="rounded bg-rose-400/15 px-1 py-0.5 text-rose-700">Masquer les asks à 99,9¢</span>:
                     masque les marchés dont tous les asks sont à 99.9¢.
                   </p>
-                  <p class="text-slate-300">
+                  <p class="text-slate-600">
                     <span
-                      class="rounded bg-violet-400/15 px-1 py-0.5 text-violet-200"
+                      class="rounded bg-violet-400/15 px-1 py-0.5 text-violet-700"
                     >Tri</span>: Yes/No, puis temps
                     restant avant minuit, puis meilleur ask.
                   </p>
@@ -969,8 +967,8 @@ function getResolutionBadgeForGroup(group: CityGroup) {
               </div>
 
               <div class="space-y-2">
-                <div class="rounded-md border border-white/10 bg-white/5 p-2.5">
-                  <p class="mb-1 text-slate-100">
+                <div class="rounded-md border border-slate-200 bg-slate-50 p-2.5">
+                  <p class="mb-1 text-slate-700">
                     °C → °F
                   </p>
                   <UInput
@@ -979,14 +977,14 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     type="number"
                     placeholder="°C"
                   />
-                  <p class="mt-1 text-slate-400">
-                    Résultat: <span class="font-semibold text-white">{{ fFromC ? `${fFromC}
+                  <p class="mt-1 text-slate-500">
+                    Résultat: <span class="font-semibold text-slate-900">{{ fFromC ? `${fFromC}
                       °F` : '—' }}</span>
                   </p>
                 </div>
 
-                <div class="rounded-md border border-white/10 bg-white/5 p-2.5">
-                  <p class="mb-1 text-slate-100">
+                <div class="rounded-md border border-slate-200 bg-slate-50 p-2.5">
+                  <p class="mb-1 text-slate-700">
                     °F → °C
                   </p>
                   <UInput
@@ -995,8 +993,8 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     type="number"
                     placeholder="°F"
                   />
-                  <p class="mt-1 text-slate-400">
-                    Résultat: <span class="font-semibold text-white">{{ cFromF ? `${cFromF}
+                  <p class="mt-1 text-slate-500">
+                    Résultat: <span class="font-semibold text-slate-900">{{ cFromF ? `${cFromF}
                       °C` : '—' }}</span>
                   </p>
                 </div>
@@ -1005,11 +1003,11 @@ function getResolutionBadgeForGroup(group: CityGroup) {
           </div>
         </details>
       </div>
-    </template>
+    </div>
 
     <div
       v-if="loading"
-      class="flex items-center gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4 text-emerald-100"
+      class="flex items-center gap-3 rounded-sm border border-emerald-400/20 bg-emerald-400/5 p-4 text-emerald-700"
     >
       <UIcon name="i-lucide-loader-circle" class="size-5 animate-spin" />
       Chargement des markets dust…
@@ -1017,50 +1015,66 @@ function getResolutionBadgeForGroup(group: CityGroup) {
 
     <div
       v-else-if="!groups.length"
-      class="rounded-2xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-slate-300"
+      class="rounded-sm border border-dashed border-slate-200 bg-slate-50 p-10 text-center text-slate-600"
     >
-      <UIcon name="i-lucide-sparkles" class="mx-auto mb-3 size-8 text-emerald-300" />
+      <UIcon name="i-lucide-sparkles" class="mx-auto mb-3 size-8 text-emerald-700" />
       Aucun market dust n'est encore disponible. Le bot Discord devra en envoyer pour alimenter cette vue.
     </div>
 
-    <div v-else class="grid grid-cols-1 items-start gap-3 xl:grid-cols-2">
-      <section
+    <div v-if="!loading && groups.length" class="station-overview" aria-label="Aperçu de toutes les villes">
+      <a
         v-for="group in groups"
         :key="group.city"
-        class="overflow-hidden rounded-xl border border-white/5 bg-white/5 sm:rounded-2xl sm:border-white/10"
+        :href="`#station-${group.airport || encodeURIComponent(group.city)}`"
+        class="overview-reading"
       >
-        <div class="flex w-full flex-col gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
+        <div class="overview-city"><strong>{{ group.city }}</strong><span>{{ group.airport }}</span></div>
+        <span class="overview-temperature">{{ weatherForGroup(group) ? weatherTemperature(weatherForGroup(group)!.current?.temperature, weatherForGroup(group)!.unit) : '—' }}</span>
+        <span class="overview-caption">{{ group.peakLabel ? `Pic ${group.peakLabel}` : 'Pic non disponible' }}</span>
+        <span class="overview-clock">{{ cityTime(group.tz, group.localTime) }}</span>
+      </a>
+    </div>
+
+    <div v-if="!loading && groups.length" class="station-grid">
+      <section
+        v-for="group in groups"
+        :id="`station-${group.airport || encodeURIComponent(group.city)}`"
+        :key="group.city"
+        class="station-panel"
+      >
+        <div class="station-header">
           <button
             type="button"
-            class="flex w-full min-w-0 flex-1 items-center justify-between gap-2.5 rounded-md text-left transition hover:bg-white/5"
+            class="flex w-full min-w-0 flex-1 items-center justify-between gap-2.5 rounded-md text-left transition hover:bg-slate-50"
+            :aria-expanded="!isCollapsed(group.city)"
             @click="toggleCity(group.city)"
           >
             <div class="flex min-w-0 items-center gap-3">
               <UIcon
                 :name="isCollapsed(group.city) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
-                class="size-4 shrink-0 text-slate-400"
+                class="size-4 shrink-0 text-slate-500"
               />
               <div class="min-w-0">
-                <h3 class="text-sm font-semibold text-balance break-words text-white">
+                <h3 class="station-name">
                   {{ group.city }}
-                  <span v-if="group.airport" class="ml-1 text-[11px] font-normal text-slate-400">{{ group.airport
+                  <span v-if="group.airport" class="ml-1 text-[11px] font-normal text-slate-500">{{ group.airport
                   }}</span>
                   <span
                     v-if="getResolutionBadgeForGroup(group)"
                     :title="`Source de resolution : ${getResolutionBadgeForGroup(group)!.label}`"
                     class="ml-1.5 inline-flex select-none items-center rounded px-1.5 py-0.5 align-middle text-[9px] font-bold tracking-wide"
                     :class="getResolutionBadgeForGroup(group)!.matchesAirportCode === false
-                      ? 'border border-rose-400/40 bg-rose-400/15 text-rose-200'
-                      : 'border border-violet-400/40 bg-violet-400/15 text-violet-200'"
+                      ? 'border border-rose-400/40 bg-rose-400/15 text-rose-700'
+                      : 'border border-violet-400/40 bg-violet-400/15 text-violet-700'"
                   >
                     {{ getResolutionBadgeForGroup(group)!.label }}
                   </span>
                 </h3>
                 <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                  <p v-if="group.peakLabel" class="break-words text-[11px] text-slate-400">
-                    Peak {{ group.peakLabel }}
+                  <p v-if="group.peakLabel" class="break-words text-[11px] text-slate-500">
+                    Pic {{ group.peakLabel }}
                   </p>
-                  <span v-if="group.dateLabel" class="inline-flex items-center rounded-full bg-white/5 px-1.5 py-0.5 text-[11px] font-medium text-slate-300">
+                  <span v-if="group.dateLabel" class="inline-flex items-center rounded-sm bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
                     {{ group.dateLabel }}
                   </span>
                 </div>
@@ -1068,13 +1082,13 @@ function getResolutionBadgeForGroup(group: CityGroup) {
             </div>
             <div class="flex shrink-0 items-center gap-3">
               <div class="text-right leading-none">
-                <p class="font-mono text-lg font-bold tabular-nums text-white">
+                <p class="font-mono text-lg font-bold tabular-nums text-slate-900">
                   {{ cityTime(group.tz, group.localTime) }}
                 </p>
                 <p
                   v-if="timeToMidnight(group.tz)"
                   class="mt-0.5 text-[11px] font-medium tabular-nums"
-                  :class="timeToMidnight(group.tz)!.urgent ? 'text-rose-300' : 'text-amber-300/80'"
+                  :class="timeToMidnight(group.tz)!.urgent ? 'text-rose-700' : 'text-amber-700'"
                 >
                   <UIcon name="i-lucide-moon" class="-mt-0.5 mr-0.5 inline-block size-3" />minuit dans {{
                     timeToMidnight(group.tz)!.label }}
@@ -1085,7 +1099,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   v-if="group.urgentCount > 0"
                   color="warning"
                   variant="subtle"
-                  class="shrink-0 rounded-full"
+                  class="shrink-0 rounded-sm"
                 >
                   ⏳ {{
                     group.urgentCount }}
@@ -1100,7 +1114,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                 v-for="quickLink in getQuickLinksForGroup(group)"
                 :key="`${group.city}-quick-${quickLink.label}`"
                 color="primary"
-                variant="soft"
+                variant="link"
                 size="xs"
                 :to="quickLink.url"
                 target="_blank"
@@ -1131,11 +1145,11 @@ function getResolutionBadgeForGroup(group: CityGroup) {
 
         <div
           v-if="!isCollapsed(group.city)"
-          class="space-y-1.5 border-t border-white/5 p-2 sm:space-y-2 sm:border-white/10 sm:p-3"
+          class="station-body"
         >
           <div
             v-if="group.markets.some(m => m.airportData?.ignoreForTrading)"
-            class="rounded-lg border-l-4 border-amber-500 bg-amber-500/15 p-2.5 text-xs text-amber-200"
+            class="rounded-sm border-l-4 border-amber-500 bg-amber-500/15 p-2.5 text-xs text-amber-700"
           >
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-alert-triangle" class="size-4 flex-shrink-0" />
@@ -1145,7 +1159,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
 
           <div
             v-if="!weatherForGroup(group)"
-            class="flex items-center gap-2 rounded-lg border border-dashed border-white/20 bg-black/10 px-2.5 py-2 text-[11px] text-slate-200"
+            class="flex items-center gap-2 rounded-sm border border-dashed border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] text-slate-700"
           >
             <UIcon name="i-lucide-cloud-off" class="size-3.5 shrink-0" />
             Meteo indisponible
@@ -1153,18 +1167,21 @@ function getResolutionBadgeForGroup(group: CityGroup) {
 
           <div
             v-else-if="!weatherForGroup(group)!.disabled"
-            class="min-w-0 rounded-lg border border-sky-300/10 bg-gradient-to-br from-sky-400/8 via-slate-950/30 to-amber-400/5 p-2.5"
+            class="weather-instruments"
           >
+            <h4 class="instrument-heading">
+              OBSERVATIONS & PRÉVISIONS
+            </h4>
             <div class="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2.5">
               <div class="flex min-w-[72px] items-center gap-2">
                 <span class="text-2xl" role="img" :aria-label="weatherConditionLabel(weatherForGroup(group)!.current?.condition)">
                   {{ weatherForGroup(group)!.current?.conditionIcon || '🌡️' }}
                 </span>
                 <div>
-                  <p class="font-mono text-lg font-bold leading-none tabular-nums text-amber-100">
+                  <p class="current-temperature">
                     {{ weatherTemperature(weatherForGroup(group)!.current?.temperature, weatherForGroup(group)!.unit) }}
                   </p>
-                  <p class="mt-1 max-w-40 text-[10px] font-medium leading-tight text-slate-100" :title="weatherConditionLabel(weatherForGroup(group)!.current?.condition)">
+                  <p class="mt-1 max-w-40 text-[10px] font-medium leading-tight text-slate-700" :title="weatherConditionLabel(weatherForGroup(group)!.current?.condition)">
                     {{ weatherConditionLabel(weatherForGroup(group)!.current?.condition) }}
                   </p>
                 </div>
@@ -1175,21 +1192,21 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   <div
                     v-for="point in weatherForGroup(group)!.hourly!.slice(0, 6)"
                     :key="`hourly-${group.airport}-${point.timeLocal}`"
-                    class="min-w-14 flex-1 rounded bg-white/5 px-1 py-1 text-center"
+                    class="min-w-14 flex-1 rounded bg-slate-50 px-1 py-1 text-center"
                     :title="weatherConditionLabel(point.condition)"
                   >
-                    <p class="truncate text-[9px] font-medium tabular-nums text-slate-200">
+                    <p class="truncate text-[9px] font-medium tabular-nums text-slate-700">
                       {{ weatherHour(point.timeLocal, group.tz) }}
                     </p>
                     <p class="my-0.5 text-xs leading-none">
                       {{ point.conditionIcon || '🌤️' }}
                     </p>
-                    <p class="truncate text-[10px] font-semibold tabular-nums text-slate-100">
+                    <p class="truncate text-[10px] font-semibold tabular-nums text-slate-700">
                       {{ weatherTemperature(point.temperature, weatherForGroup(group)!.unit).replace(weatherForGroup(group)!.unit, '') }}
                     </p>
                   </div>
                 </div>
-                <p v-else class="flex h-full items-center text-[10px] text-slate-300">
+                <p v-else class="flex h-full items-center text-[10px] text-slate-600">
                   Prevision horaire indisponible
                 </p>
               </div>
@@ -1201,23 +1218,23 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   :title="weatherForGroup(group)!.reason || weatherForGroup(group)!.sourceLabel"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="rounded-full border border-sky-400/25 bg-sky-400/10 px-1.5 py-0.5 text-[9px] font-semibold text-sky-200 hover:bg-sky-400/20"
+                  class="rounded-sm border border-sky-400/25 bg-sky-400/10 px-1.5 py-0.5 text-[9px] font-semibold text-sky-700 hover:bg-sky-400/20"
                 >
                   {{ weatherForGroup(group)!.sourceLabel }}
                 </a>
-                <span v-else class="rounded-full border border-slate-400/20 bg-white/5 px-1.5 py-0.5 text-[9px] text-slate-300">
+                <span v-else class="rounded-sm border border-slate-400/20 bg-slate-50 px-1.5 py-0.5 text-[9px] text-slate-600">
                   {{ weatherForGroup(group)!.sourceLabel }}
                 </span>
                 <span
-                  class="rounded-full border px-1.5 py-0.5 text-[9px]"
-                  :class="weatherForGroup(group)!.stale ? 'border-slate-400/30 bg-slate-400/10 text-slate-300' : 'border-emerald-400/25 bg-emerald-400/10 text-emerald-200'"
+                  class="rounded-sm border px-1.5 py-0.5 text-[9px]"
+                  :class="weatherForGroup(group)!.stale ? 'border-slate-400/30 bg-slate-400/10 text-slate-600' : 'border-emerald-400/25 bg-emerald-400/10 text-emerald-700'"
                   :title="weatherForGroup(group)!.nextRefreshAt ? `Prochain refresh: ${formatFrDate(weatherForGroup(group)!.nextRefreshAt)}` : ''"
                 >
                   {{ weatherFreshness(weatherForGroup(group)!) }}
                 </span>
                 <span
                   v-if="signalForGroup(group)"
-                  class="max-w-full rounded-full border px-1.5 py-0.5 text-[9px] font-semibold"
+                  class="max-w-full rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold"
                   :class="signalTone(signalForGroup(group)!.status)"
                   :title="signalForGroup(group)!.reason"
                 >
@@ -1228,24 +1245,24 @@ function getResolutionBadgeForGroup(group: CityGroup) {
 
             <p
               v-if="weatherForGroup(group)!.source === 'open-meteo' && weatherForGroup(group)!.reason"
-              class="mt-1.5 flex items-start gap-1 text-[9px] font-medium text-sky-100"
+              class="mt-1.5 flex items-start gap-1 text-[9px] font-medium text-sky-700"
               :title="weatherForGroup(group)!.reason || ''"
             >
               <UIcon name="i-lucide-info" class="mt-0.5 size-3 shrink-0" />
               Prévisions principales indisponibles
             </p>
 
-            <div v-if="weatherForGroup(group)!.sparkline && weatherForGroup(group)!.sparkline!.length > 1" class="mt-2 min-w-0 rounded-lg border border-white/10 bg-[#111315] px-2 pt-2">
-              <div class="flex items-center justify-between gap-2 px-1 text-[9px] font-medium text-slate-200">
+            <div v-if="weatherForGroup(group)!.sparkline && weatherForGroup(group)!.sparkline!.length > 1" class="temperature-chart">
+              <div class="flex items-center justify-between gap-2 px-1 text-[9px] font-medium text-slate-700">
                 <span class="uppercase tracking-wide">Température aujourd’hui</span>
                 <div class="flex items-center gap-2">
-                  <span v-if="weatherForGroup(group)!.forecastModels?.length" class="font-mono tabular-nums text-sky-200">
+                  <span v-if="weatherForGroup(group)!.forecastModels?.length" class="font-mono tabular-nums text-sky-700">
                     {{ weatherForGroup(group)!.forecastModels!.length }} modèles · écart {{ weatherTemperature(sparklineForGroup(group)!.spreadMax, weatherForGroup(group)!.unit) }}
                   </span>
-                  <span v-if="temperatureTrend(weatherForGroup(group)!)" class="font-semibold text-white">
+                  <span v-if="temperatureTrend(weatherForGroup(group)!)" class="font-semibold text-slate-900">
                     {{ temperatureTrend(weatherForGroup(group)!)!.icon }} {{ temperatureTrend(weatherForGroup(group)!)!.label }}
                   </span>
-                  <span v-if="sparklineForGroup(group)!.peakPoint" class="font-mono tabular-nums text-amber-100">
+                  <span v-if="sparklineForGroup(group)!.peakPoint" class="font-mono tabular-nums text-amber-700">
                     Max mesuré {{ weatherTemperature(sparklineForGroup(group)!.peakPoint!.temperature, weatherForGroup(group)!.unit) }}
                   </span>
                 </div>
@@ -1265,7 +1282,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   :x2="sparklineForGroup(group)!.chartRight"
                   :y2="tick.y"
                   stroke="currentColor"
-                  class="text-white/15"
+                  class="text-slate-900"
                 />
                 <line
                   v-for="point in sparklineForGroup(group)!.axisPoints"
@@ -1275,7 +1292,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   :x2="point.x"
                   y2="141"
                   stroke="currentColor"
-                  class="text-white/15"
+                  class="text-slate-900"
                 />
                 <text
                   v-for="tick in sparklineForGroup(group)!.yAxisPoints"
@@ -1284,7 +1301,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   :y="tick.y + 3"
                   text-anchor="end"
                   fill="currentColor"
-                  class="text-[7px] font-medium text-slate-300"
+                  class="text-[7px] font-medium text-slate-600"
                 >
                   {{ weatherTemperature(tick.value, weatherForGroup(group)!.unit) }}
                 </text>
@@ -1296,7 +1313,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   y2="141"
                   stroke="currentColor"
                   stroke-dasharray="2 3"
-                  class="text-slate-200/50"
+                  class="text-slate-700"
                 />
                 <text
                   v-if="sparklineForGroup(group)!.boundaryX != null"
@@ -1304,7 +1321,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   y="14"
                   text-anchor="middle"
                   fill="currentColor"
-                  class="text-[7px] font-semibold text-slate-200"
+                  class="text-[7px] font-semibold text-slate-700"
                 >
                   Maintenant
                 </text>
@@ -1316,7 +1333,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   stroke-width="2.5"
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  class="text-amber-300"
+                  class="text-amber-700"
                 />
                 <path
                   v-if="sparklineForGroup(group)!.spread"
@@ -1346,7 +1363,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   stroke-dasharray="5 3"
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  class="text-slate-100/85"
+                  class="text-slate-700"
                 />
                 <path
                   v-if="sparklineForGroup(group)!.primaryForecast"
@@ -1356,7 +1373,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   stroke-width="3"
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  class="text-sky-300"
+                  class="text-sky-700"
                 />
                 <circle
                   v-for="point in sparklineForGroup(group)!.observedPoints"
@@ -1365,19 +1382,19 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   :cy="point.y"
                   r="2.8"
                   fill="currentColor"
-                  stroke="#111315"
+                  stroke="white"
                   stroke-width="1.5"
-                  class="text-amber-300"
+                  class="text-amber-700"
                 />
                 <circle
                   v-if="sparklineForGroup(group)!.peakPoint"
                   :cx="sparklineForGroup(group)!.peakPoint!.x"
                   :cy="sparklineForGroup(group)!.peakPoint!.y"
                   r="4.5"
-                  fill="#111315"
+                  fill="white"
                   stroke="currentColor"
                   stroke-width="2"
-                  class="text-amber-200"
+                  class="text-amber-700"
                 />
                 <text
                   v-for="point in sparklineForGroup(group)!.axisPoints"
@@ -1386,7 +1403,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   y="158"
                   text-anchor="middle"
                   fill="currentColor"
-                  class="text-[8px] font-medium text-slate-200"
+                  class="text-[8px] font-medium text-slate-700"
                 >
                   {{ point.label || weatherHour(point.timeLocal, group.tz) }}
                 </text>
@@ -1413,13 +1430,13 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     y2="139"
                     stroke="currentColor"
                     stroke-dasharray="3 3"
-                    class="text-white/60"
+                    class="text-slate-900"
                   />
                   <circle
                     :cx="hoveredWeatherPoint.x"
                     :cy="hoveredWeatherPoint.y"
                     r="4"
-                    fill="#111315"
+                    fill="white"
                     stroke="white"
                     stroke-width="2"
                   />
@@ -1451,7 +1468,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   </text>
                 </g>
               </svg>
-              <div class="flex flex-wrap items-center justify-between gap-1 border-t border-white/15 px-1 py-1.5 text-[9px] font-medium text-slate-200">
+              <div class="flex flex-wrap items-center justify-between gap-1 border-t border-slate-200 px-1 py-1.5 text-[9px] font-medium text-slate-700">
                 <div class="flex items-center gap-2">
                   <span v-if="weatherForGroup(group)!.recentObservations?.length" class="inline-flex items-center gap-1"><span class="h-0.5 w-3 bg-amber-300" /> Mesuré</span>
                   <span v-if="sparklineForGroup(group)!.primaryPoints.length" class="inline-flex items-center gap-1">
@@ -1468,40 +1485,40 @@ function getResolutionBadgeForGroup(group: CityGroup) {
               </div>
             </div>
 
-            <section v-if="weatherForGroup(group)!.recentObservations?.length" class="mt-2 min-w-0 border-t border-white/10 pt-2">
-              <div class="flex items-center justify-between gap-2 px-1 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-200">
+            <section v-if="weatherForGroup(group)!.recentObservations?.length" class="mt-2 min-w-0 border-t border-slate-200 pt-2">
+              <div class="flex items-center justify-between gap-2 px-1 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-700">
                 <span>8 derniers relevés METAR</span>
                 <span
                   v-if="hasMetarObservations(weatherForGroup(group)!)"
-                  class="rounded border border-emerald-400/25 bg-emerald-400/10 px-1 py-0.5 text-emerald-200"
+                  class="rounded border border-emerald-400/25 bg-emerald-400/10 px-1 py-0.5 text-emerald-700"
                 >
                   Station météo
                 </span>
               </div>
-              <div class="mt-1.5 grid grid-cols-2 gap-1.5 sm:grid-cols-4 2xl:grid-cols-8">
+              <div class="observation-strip">
                 <div
                   v-for="observation in weatherForGroup(group)!.recentObservations!.slice(-8)"
                   :key="`obs-${group.airport}-${observation.timeLocal}`"
-                  class="min-w-0 rounded-md border border-white/10 bg-[#111315] px-2 py-1.5 text-[9px] tabular-nums"
+                  class="observation-reading"
                   :title="weatherConditionLabel(observation.condition || observation.cloudCover)"
                 >
                   <div class="flex items-center justify-between gap-2">
-                    <span class="font-semibold text-slate-100">{{ weatherHour(observation.timeLocal, group.tz) }}</span>
+                    <span class="font-semibold text-slate-700">{{ weatherHour(observation.timeLocal, group.tz) }}</span>
                   </div>
                   <div class="mt-1 min-w-0">
                     <p class="flex items-center gap-1 text-sm font-bold">
-                      <span :class="isDailyMaximumTemperature(observation.temperature, weatherForGroup(group)!) ? 'text-rose-300' : 'text-amber-100'">
+                      <span :class="isDailyMaximumTemperature(observation.temperature, weatherForGroup(group)!) ? 'text-rose-700' : 'text-amber-700'">
                         {{ metarTemperature(observation, weatherForGroup(group)!.unit) }}
                       </span>
                       <span
                         v-if="observation.temperaturePrecision === 'tenth'"
-                        class="rounded border border-sky-400/25 bg-sky-400/10 px-1 py-0.5 text-[7px] font-semibold leading-none text-sky-200"
+                        class="rounded border border-sky-400/25 bg-sky-400/10 px-1 py-0.5 text-[7px] font-semibold leading-none text-sky-700"
                         title="Température METAR disponible au dixième de degré Celsius"
                       >
                         0,1°C
                       </span>
                     </p>
-                    <p class="mt-0.5 min-w-0 truncate text-[8px] font-medium text-slate-200">
+                    <p class="mt-0.5 min-w-0 truncate text-[8px] font-medium text-slate-700">
                       {{ weatherConditionLabel(observation.condition || observation.cloudCover) }}
                     </p>
                   </div>
@@ -1509,107 +1526,111 @@ function getResolutionBadgeForGroup(group: CityGroup) {
               </div>
             </section>
 
-            <p v-if="weatherForGroup(group)!.source === 'unknown' || weatherForGroup(group)!.error" class="mt-1.5 text-[10px] font-medium text-slate-200">
+            <p v-if="weatherForGroup(group)!.source === 'unknown' || weatherForGroup(group)!.error" class="mt-1.5 text-[10px] font-medium text-slate-700">
               Donnees structurees indisponibles<span v-if="weatherForGroup(group)!.reason"> · {{ weatherForGroup(group)!.reason }}</span>
             </p>
           </div>
 
-          <article
-            v-for="market in group.markets"
-            :key="market.id || market.slug || `${market.city}-${market.groupItemTitle}-${market.outcome}`"
-            class="rounded-lg border border-white/10 p-2.5 transition sm:rounded-xl sm:p-3"
-            :class="isYes(market.outcome)
-              ? 'bg-emerald-400/5 sm:border-emerald-400/30 sm:hover:border-emerald-400/50'
-              : 'bg-rose-400/5 sm:border-rose-400/30 sm:hover:border-rose-400/50'"
-          >
-            <div class="flex items-center justify-between gap-3">
-              <div class="flex min-w-0 items-center gap-2">
-                <span
-                  class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
-                  :class="isYes(market.outcome)
-                    ? 'bg-emerald-400/15 text-emerald-300'
-                    : 'bg-rose-400/15 text-rose-300'"
-                >{{ market.outcome || '—' }}</span>
-                <h4 class="truncate text-sm font-semibold text-white">
-                  {{ market.groupItemTitle || 'Seuil' }}
-                </h4>
-              </div>
-
-              <div class="flex shrink-0 items-center gap-1.5 text-xs">
-                <span
-                  class="rounded-full px-2 py-0.5 font-semibold"
-                  :class="isYes(market.outcome)
-                    ? 'bg-emerald-400/15 text-emerald-300'
-                    : 'bg-rose-400/15 text-rose-300'"
-                >{{ formatCents(market.bestAsk) }}</span>
-              </div>
-            </div>
-
-            <!-- Order book : asks (rouge) en haut, séparateur, bids (vert) en bas -->
-            <div class="mt-2 grid grid-cols-1 overflow-hidden rounded-md border border-white/10 bg-black/10 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-              <!-- Asks (max 3) : meilleur ask juste au-dessus du séparateur -->
-              <section class="min-w-0 bg-rose-400/[0.025]">
-                <div class="flex items-center justify-between border-b border-white/5 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-rose-300/80">
-                  <span>Asks</span>
-                  <span>Prix · Qté · Valeur</span>
+          <div class="station-markets">
+            <h4 class="instrument-heading">
+              MARCHÉS · {{ group.markets.length }} SEUILS
+            </h4>
+            <article
+              v-for="market in group.markets"
+              :key="market.id || market.slug || `${market.city}-${market.groupItemTitle}-${market.outcome}`"
+              class="market-book"
+              :class="isYes(market.outcome)
+                ? 'market-yes' : 'market-no'"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex min-w-0 items-center gap-2">
+                  <span
+                    class="rounded-sm px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                    :class="isYes(market.outcome)
+                      ? 'bg-emerald-400/15 text-emerald-700'
+                      : 'bg-rose-400/15 text-rose-700'"
+                  >{{ market.outcome || '—' }}</span>
+                  <h4 class="truncate text-sm font-semibold text-slate-900">
+                    {{ market.groupItemTitle || 'Seuil' }}
+                  </h4>
                 </div>
-                <template v-if="orderBook(market).asks.length">
-                  <div
-                    v-for="(level, i) in orderBook(market).asks"
-                    :key="`ask-${i}`"
-                    class="relative grid grid-cols-[auto_1fr_auto] items-center gap-3 px-2 py-1 text-[11px] tabular-nums"
-                  >
-                    <span class="absolute inset-y-0 right-0 bg-rose-400/15" :style="{ width: `${level.depth}%` }" />
-                    <span class="relative font-semibold text-rose-300">{{ formatCents(level.price) }}</span>
-                    <span class="relative text-right text-slate-300">{{ formatShares(level.size) }}</span>
-                    <div class="relative flex flex-col items-end text-right">
-                      <span class="text-slate-400">{{ formatUsd(level.price, level.size) }}</span>
-                      <span class="text-[10px]" :class="(netYieldAfterFeesValue(level.price, level.size) ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300'">
-                        {{ formatNetYieldAfterFees(level.price, level.size) }}
-                      </span>
+
+                <div class="flex shrink-0 items-center gap-1.5 text-xs">
+                  <span
+                    class="rounded-sm px-2 py-0.5 font-semibold"
+                    :class="isYes(market.outcome)
+                      ? 'bg-emerald-400/15 text-emerald-700'
+                      : 'bg-rose-400/15 text-rose-700'"
+                  >{{ formatCents(market.bestAsk) }}</span>
+                </div>
+              </div>
+
+              <!-- Order book : asks (rouge) en haut, séparateur, bids (vert) en bas -->
+              <div class="mt-2 grid grid-cols-1 overflow-hidden rounded-md border border-slate-200 bg-slate-50 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+                <!-- Asks (max 3) : meilleur ask juste au-dessus du séparateur -->
+                <section class="min-w-0 bg-rose-400/[0.025]">
+                  <div class="flex items-center justify-between border-b border-slate-200 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-rose-700">
+                    <span>Asks</span>
+                    <span>Prix · Qté · Valeur</span>
+                  </div>
+                  <template v-if="orderBook(market).asks.length">
+                    <div
+                      v-for="(level, i) in orderBook(market).asks"
+                      :key="`ask-${i}`"
+                      class="relative grid grid-cols-[auto_1fr_auto] items-center gap-3 px-2 py-1 text-[11px] tabular-nums"
+                    >
+                      <span class="absolute inset-y-0 right-0 bg-rose-400/15" :style="{ width: `${level.depth}%` }" />
+                      <span class="relative font-semibold text-rose-700">{{ formatCents(level.price) }}</span>
+                      <span class="relative text-right text-slate-600">{{ formatShares(level.size) }}</span>
+                      <div class="relative flex flex-col items-end text-right">
+                        <span class="text-slate-500">{{ formatUsd(level.price, level.size) }}</span>
+                        <span class="text-[10px]" :class="(netYieldAfterFeesValue(level.price, level.size) ?? 0) >= 0 ? 'text-emerald-700' : 'text-rose-700'">
+                          {{ formatNetYieldAfterFees(level.price, level.size) }}
+                        </span>
+                      </div>
                     </div>
+                  </template>
+                  <div v-else class="px-2 py-1 text-[11px] italic text-slate-500">
+                    Pas d'asks
                   </div>
-                </template>
-                <div v-else class="px-2 py-1 text-[11px] italic text-slate-500">
-                  Pas d'asks
-                </div>
-              </section>
+                </section>
 
-              <!-- Séparateur bids / asks -->
-              <div
-                class="flex items-center justify-center border-y border-white/10 px-2 py-1 text-[9px] uppercase tracking-wider text-slate-400 md:w-20 md:border-x md:border-y-0"
-              >
-                <span v-if="market.displaySpread || market.spread" class="text-center">Spread {{ market.displaySpread
-                  || formatSpread(market.spread) }}</span>
+                <!-- Séparateur bids / asks -->
+                <div
+                  class="flex items-center justify-center border-y border-slate-200 px-2 py-1 text-[9px] uppercase tracking-wider text-slate-500 md:w-20 md:border-x md:border-y-0"
+                >
+                  <span v-if="market.displaySpread || market.spread" class="text-center">Spread {{ market.displaySpread
+                    || formatSpread(market.spread) }}</span>
+                </div>
+
+                <!-- Bids (max 3) : meilleur bid juste sous le séparateur -->
+                <section class="min-w-0 bg-emerald-400/[0.025]">
+                  <div class="flex items-center justify-between border-b border-slate-200 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-emerald-700">
+                    <span>Bids</span>
+                    <span>Prix · Qté · Valeur</span>
+                  </div>
+                  <template v-if="orderBook(market).bids.length">
+                    <div
+                      v-for="(level, i) in orderBook(market).bids"
+                      :key="`bid-${i}`"
+                      class="relative grid grid-cols-[auto_1fr_auto] items-center gap-3 px-2 py-1 text-[11px] tabular-nums"
+                    >
+                      <span class="absolute inset-y-0 right-0 bg-emerald-400/15" :style="{ width: `${level.depth}%` }" />
+                      <span class="relative font-semibold text-emerald-700">{{ formatCents(level.price) }}</span>
+                      <span class="relative text-right text-slate-600">{{ formatShares(level.size) }}</span>
+                      <span class="relative text-right text-slate-500">{{ formatUsd(level.price, level.size)
+                      }}</span>
+                    </div>
+                  </template>
+                  <div v-else class="px-2 py-1 text-[11px] italic text-slate-500">
+                    No bids
+                  </div>
+                </section>
               </div>
-
-              <!-- Bids (max 3) : meilleur bid juste sous le séparateur -->
-              <section class="min-w-0 bg-emerald-400/[0.025]">
-                <div class="flex items-center justify-between border-b border-white/5 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-emerald-300/80">
-                  <span>Bids</span>
-                  <span>Prix · Qté · Valeur</span>
-                </div>
-                <template v-if="orderBook(market).bids.length">
-                  <div
-                    v-for="(level, i) in orderBook(market).bids"
-                    :key="`bid-${i}`"
-                    class="relative grid grid-cols-[auto_1fr_auto] items-center gap-3 px-2 py-1 text-[11px] tabular-nums"
-                  >
-                    <span class="absolute inset-y-0 right-0 bg-emerald-400/15" :style="{ width: `${level.depth}%` }" />
-                    <span class="relative font-semibold text-emerald-300">{{ formatCents(level.price) }}</span>
-                    <span class="relative text-right text-slate-300">{{ formatShares(level.size) }}</span>
-                    <span class="relative text-right text-slate-400">{{ formatUsd(level.price, level.size)
-                    }}</span>
-                  </div>
-                </template>
-                <div v-else class="px-2 py-1 text-[11px] italic text-slate-500">
-                  No bids
-                </div>
-              </section>
-            </div>
-          </article>
+            </article>
+          </div>
         </div>
       </section>
     </div>
-  </UCard>
+  </div>
 </template>
