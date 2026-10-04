@@ -21,6 +21,8 @@ export default defineNuxtConfig({
     }
   },
 
+  buildDir: '.nuxt',
+
   routeRules: {
     '/api/**': {
       cors: true

@@ -1,0 +1,227 @@
+[data-layout="parcours"] button, [data-layout="parcours"] a, [data-layout="parcours"] input, [data-layout="parcours"] select, [data-layout="parcours"] summary { -webkit-tap-highlight-color: transparent; }
+[data-layout="parcours"] button, [data-layout="parcours"] summary, [data-layout="parcours"] select { cursor: pointer; }
+[data-layout="parcours"] a:focus-visible, [data-layout="parcours"] button:focus-visible, [data-layout="parcours"] summary:focus-visible, [data-layout="parcours"] input:focus-visible, [data-layout="parcours"] select:focus-visible { outline: 2px solid #2465a4; outline-offset: 3px; }
+[data-layout="parcours"] .weather-workspace { min-height: 100vh; background: #eef2f5; }
+[data-layout="parcours"] .workspace-nav { display: flex; align-items: center; gap: 42px; min-height: 60px; padding: 0 38px; background: #fff; border-bottom: 1px solid #cdd7df; }
+[data-layout="parcours"] .wordmark { display: flex; gap: 11px; align-items: center; color: #174e83; font-weight: 800; font-size: 24px; letter-spacing: .07em; line-height: 1; }
+[data-layout="parcours"] .wordmark-sub { display: block; font-size: 8px; letter-spacing: .17em; font-weight: 600; margin-top: 7px; color: #66798a; }
+[data-layout="parcours"] .workspace-tabs { align-self: stretch; display: flex; align-items: stretch; gap: 28px; font-size: 13px; font-weight: 600; }
+[data-layout="parcours"] .workspace-tabs a { display: flex; align-items: center; border-bottom: 3px solid transparent; padding-top: 3px; color: #607080; }
+[data-layout="parcours"] .workspace-tabs a[aria-current] { color: #174e83; border-color: #2465a4; }
+[data-layout="parcours"] .workspace-tabs a:hover { color: #174e83; }
+[data-layout="parcours"] .workspace-version { margin-left: auto; color: #81919d; font-size: 10px; font-family: ui-monospace, monospace; }
+[data-layout="parcours"] .workspace-content { max-width: 2300px; margin: 0 auto; padding: 20px 38px 48px; }
+[data-layout="parcours"] .page-heading { display: flex; justify-content: space-between; gap: 24px; align-items: center; margin-bottom: 16px; }
+[data-layout="parcours"] .eyebrow { color: #708493; font-size: 9px; letter-spacing: .15em; font-weight: 700; margin-bottom: 9px; }
+[data-layout="parcours"] h1 { font-size: clamp(24px, 2.2vw, 33px); color: #233a4d; font-weight: 650; line-height: 1.2; letter-spacing: -.035em; }
+[data-layout="parcours"] .page-description { color: #6c7f8f; font-size: 12px; margin-top: 7px; }
+[data-layout="parcours"] .feed-status { display: flex; align-items: flex-start; gap: 9px; font-size: 11px; }
+[data-layout="parcours"] .feed-status strong { display: block; color: #35596c; font-size: 12px; font-weight: 600; }
+[data-layout="parcours"] .feed-status span:last-child { display: block; color: #7e8e9b; margin-top: 4px; }
+[data-layout="parcours"] .feed-indicator { width: 6px; height: 6px; background: #9dacb7; border-radius: 100%; margin-top: 5px; }
+[data-layout="parcours"] .feed-indicator.live { background: #23816b; }[data-layout="parcours"] .feed-indicator.error { background: #b95542; }[data-layout="parcours"] .feed-error strong { color: #9a483d; }
+[data-layout="parcours"] .board-controls { display: flex; justify-content: space-between; gap: 15px; margin-bottom: 12px; }
+[data-layout="parcours"] .board-controls > div { width: 100%; padding: 0; border: 0; display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; }
+[data-layout="parcours"] .board-controls details { margin: 0; border: 1px solid #ced8e2; background: #fff; min-width: 150px; }
+[data-layout="parcours"] .board-controls details[open] { max-width: 660px; }[data-layout="parcours"] .board-controls details[open] + * { display: none; }
+[data-layout="parcours"] .board-controls summary { color: #5e7384; }
+[data-layout="parcours"] .station-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); margin-bottom: 18px; border: 1px solid #cbd7e1; background: #fff; }
+[data-layout="parcours"] .overview-reading { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; row-gap: 3px; align-items: center; min-height: 75px; padding: 10px 14px; border-right: 1px solid #dce4eb; position: relative; }
+[data-layout="parcours"] .overview-reading:hover { background: #f5f9fc; }[data-layout="parcours"] .overview-reading:last-child { border-right: 0; }
+[data-layout="parcours"] .overview-city { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; grid-column: 1 / -1; }
+[data-layout="parcours"] .overview-city strong { color: #314d63; font-weight: 650; }[data-layout="parcours"] .overview-city span { color: #8a9aa8; font: 9px ui-monospace, monospace; }
+[data-layout="parcours"] .overview-temperature { display: block; grid-row: 2 / 4; font-size: 26px; line-height: 1.1; font-weight: 650; letter-spacing: -.045em; color: #2465a4; font-variant-numeric: tabular-nums; }
+[data-layout="parcours"] .overview-caption { display: block; grid-column: 2; grid-row: 2; color: #7a8c9c; font-size: 9px; }
+[data-layout="parcours"] .overview-clock { display: block; grid-column: 2; grid-row: 3; font: 9px ui-monospace, monospace; color: #4f6578; }
+[data-layout="parcours"] .station-grid { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
+[data-layout="parcours"] .station-panel { background: #fff; border: 1px solid #cbd7e1; scroll-margin-top: 18px; }
+[data-layout="parcours"] .station-header { padding: 12px 16px 8px; border-bottom: 1px solid #d9e2e9; background: #f8fafc; display: flex; flex-direction: column; gap: 5px; }
+[data-layout="parcours"] .station-name { font-size: 18px; font-weight: 650; letter-spacing: -.025em; color: #27465e; }
+[data-layout="parcours"] .station-name > span { font-size: 10px; }
+[data-layout="parcours"] .station-body { padding: 20px; display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; gap: 24px; }
+[data-layout="parcours"] .station-body > div:not(.weather-instruments):not(.station-markets) { grid-column: 1 / -1; }
+[data-layout="parcours"] .weather-instruments { min-width: 0; padding: 0; border: 0; background: #fff; }
+[data-layout="parcours"] .instrument-heading { color: #6c8293; font-size: 9px; font-weight: 700; letter-spacing: .12em; padding-bottom: 12px; }
+[data-layout="parcours"] .current-temperature { font-size: 28px; line-height: 1.1; font-weight: 650; color: #2465a4; font-variant-numeric: tabular-nums; letter-spacing: -.06em; }
+[data-layout="parcours"] .weather-instruments > div:first-of-type { gap: 15px; }
+[data-layout="parcours"] .weather-instruments > div:first-of-type > div:nth-child(2) { border-top: 1px solid #e6edf2; padding-top: 8px; }
+[data-layout="parcours"] .weather-instruments > div:first-of-type > div:nth-child(3) { max-width: 230px; }
+[data-layout="parcours"] .weather-instruments > div:first-of-type > div:nth-child(3) > a,
+[data-layout="parcours"] .weather-instruments > div:first-of-type > div:nth-child(3) > span { border: 0; border-radius: 0; background: transparent; font-size: 10px; }
+[data-layout="parcours"] .temperature-chart { margin-top: 14px; background: #fff; padding: 12px 0 0; border-top: 1px solid #dbe5ee; }
+[data-layout="parcours"] .temperature-chart > div:first-child { flex-wrap: wrap; gap: 4px; }
+[data-layout="parcours"] .temperature-chart svg { max-height: 220px; width: 100%; }
+[data-layout="parcours"] .temperature-chart svg text { font-size: 8px; }
+[data-layout="parcours"] .temperature-chart svg line.text-slate-900 { color: #d8e2ec; }
+[data-layout="parcours"] .observation-strip { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0; border: 1px solid #e1e7ed; }
+[data-layout="parcours"] .observation-reading { padding: 7px 6px; font-size: 9px; border-right: 1px solid #e1e7ed; }
+[data-layout="parcours"] .observation-reading:last-child { border-right: 0; }[data-layout="parcours"] .observation-reading p { font-size: 9px; }[data-layout="parcours"] .observation-reading p:first-child { font-size: 13px; }
+[data-layout="parcours"] .station-markets { padding-left: 24px; border-left: 1px solid #dbe5ee; min-width: 0; }
+[data-layout="parcours"] .market-book { padding: 10px 0 12px; border-bottom: 1px solid #dce5eb; background: #fff; }
+[data-layout="parcours"] .market-book:first-of-type { padding-top: 0; }[data-layout="parcours"] .market-book:last-child { border-bottom: 0; padding-bottom: 0; }
+[data-layout="parcours"] .market-book > div:first-child > div:first-child > span { background: transparent; padding-left: 0; font-size: 9px; font-weight: 750; width: 28px; }
+[data-layout="parcours"] .market-book > div:first-child h4 { font-size: 13px; color: #314d63; }
+[data-layout="parcours"] .market-book > div:first-child > div:last-child > span { background: transparent; font-size: 17px; letter-spacing: -.035em; color: #314d63; padding-right: 0; }
+[data-layout="parcours"] .market-book > div:nth-child(2) { border-color: #dce5eb; border-radius: 0; }
+[data-layout="parcours"] .market-book > div:nth-child(2) > section { background: transparent; }
+[data-layout="parcours"] .market-book > div:nth-child(2) > section > div:first-child { font-size: 8px; background: #f6f9fb; color: #657c8e; }
+[data-layout="parcours"] .market-book > div:nth-child(2) > div { font-size: 8px; width: 48px; padding-left: 4px; padding-right: 4px; }
+[data-layout="parcours"] .market-book .bg-rose-400\/15 { background: #d9817230; }[data-layout="parcours"] .market-book .bg-emerald-400\/15 { background: #549e8f22; }
+[data-layout="parcours"] .directory-search { width: 290px; }
+[data-layout="parcours"] .directory-filters { display: flex; gap: 16px 22px; align-items: flex-end; flex-wrap: wrap; background: #fff; border: 1px solid #cbd7e1; padding: 18px 20px; }
+[data-layout="parcours"] .directory-filters > label { display: flex; align-items: center; flex-wrap: wrap; font-size: 11px; gap: 5px; }
+[data-layout="parcours"] .directory-filters > label > span { width: 100%; color: #7b8e9e; font-size: 9px; font-weight: 600; }
+[data-layout="parcours"] .directory-filters select, [data-layout="parcours"] .directory-filters input[type=number] { min-height: 31px; padding: 0 7px; border: 1px solid #ced8e2; color: #35536b; background: #fff; border-radius: 2px; font-size: 11px; }
+[data-layout="parcours"] .directory-filters input[type=number] { width: 49px; }
+[data-layout="parcours"] .source-filters { display: flex; gap: 13px; font-size: 11px; align-items: center; padding-bottom: 7px; }
+[data-layout="parcours"] .source-filters legend { color: #7b8e9e; font-size: 9px; font-weight: 600; margin-bottom: 12px; }
+[data-layout="parcours"] .source-filters label { display: flex; align-items: center; gap: 5px; }[data-layout="parcours"] .source-filters input { accent-color: #2465a4; }
+[data-layout="parcours"] .directory-results { display: flex; gap: 18px; color: #758898; font-size: 11px; margin: 15px 0 20px; }[data-layout="parcours"] .directory-results button { color: #2465a4; text-decoration: underline; }[data-layout="parcours"] .directory-key { margin-left: auto; }
+[data-layout="parcours"] .timezone-directory { display: grid; gap: 20px; }[data-layout="parcours"] .timezone-group { border: 1px solid #cbd7e1; background: #fff; }
+[data-layout="parcours"] .timezone-heading { display: flex; gap: 16px; align-items: center; width: 100%; text-align: left; padding: 13px 18px; background: #e8eff5; color: #567184; font-size: 11px; }[data-layout="parcours"] .timezone-heading strong { color: #345d7a; font-size: 11px; font-weight: 700; }[data-layout="parcours"] .timezone-clock { font: 16px ui-monospace, monospace; color: #2465a4; }[data-layout="parcours"] .timezone-names { margin-left: auto; color: #8397a7; font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-layout="parcours"] .directory-table-wrap { overflow-x: auto; }[data-layout="parcours"] .directory-table { width: 100%; border-collapse: collapse; table-layout: auto; }[data-layout="parcours"] .directory-table thead th { padding: 12px 18px; color: #899aa7; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; text-align: left; border-bottom: 1px solid #e3eaf0; white-space: nowrap; }[data-layout="parcours"] .directory-table tbody td, [data-layout="parcours"] .directory-table tbody th { padding: 14px 18px; font-size: 11px; border-bottom: 1px solid #e3eaf0; text-align: left; font-weight: 400; vertical-align: top; }[data-layout="parcours"] .directory-table tbody tr:last-child td, [data-layout="parcours"] .directory-table tbody tr:last-child th { border: 0; }[data-layout="parcours"] .directory-table tbody tr:hover { background: #fafcfd; }
+[data-layout="parcours"] .station-code { display: block; color: #2465a4; font: 700 12px ui-monospace, monospace; }[data-layout="parcours"] .directory-city { display: block; font-weight: 600; font-size: 12px; color: #34556c; margin-top: 3px; }[data-layout="parcours"] .directory-time { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+[data-layout="parcours"] .trading-allowed { color: #43786d; }[data-layout="parcours"] .trading-ignored { color: #ac711d; }[data-layout="parcours"] .directory-links { display: flex; gap: 8px 14px; flex-wrap: wrap; min-width: 175px; }[data-layout="parcours"] .directory-links a { display: inline-flex; gap: 2px; color: #2465a4; font-size: 10px; }[data-layout="parcours"] .directory-links a:hover, [data-layout="parcours"] .resolution-links a:hover { text-decoration: underline; }[data-layout="parcours"] .resolution-links { display: grid; gap: 6px; min-width: 170px; }[data-layout="parcours"] .resolution-links a { display: flex; align-items: center; gap: 5px; color: #657f93; font-size: 10px; }[data-layout="parcours"] .resolution-links strong { font-weight: 600; }[data-layout="parcours"] .resolution-links .resolution-warning { color: #b66720; }[data-layout="parcours"] .directory-loading { padding: 35px; border: 1px solid #d2dde5; background: #fff; color: #71889a; }
+@media (min-width: 1200px) { [data-layout="parcours"] .station-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }[data-layout="parcours"] .station-body { grid-template-columns: 1fr; gap: 18px; }[data-layout="parcours"] .station-markets { border-left: 0; border-top: 1px solid #dbe5ee; padding: 15px 0 0; } }
+@media (min-width: 1800px) { [data-layout="parcours"] .station-body { grid-template-columns: minmax(0, .45fr) minmax(0, .55fr); padding: 16px; gap: 18px; }[data-layout="parcours"] .station-markets { border-top: 0; border-left: 1px solid #dbe5ee; padding: 0 0 0 18px; }[data-layout="parcours"] .temperature-chart svg { max-height: 160px; }[data-layout="parcours"] .weather-instruments > div:first-of-type > div:nth-child(3) { max-width: 160px; }[data-layout="parcours"] .observation-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }[data-layout="parcours"] .observation-reading { border-bottom: 1px solid #e1e7ed; }[data-layout="parcours"] .temperature-chart > div:first-child > div { flex-wrap: wrap; gap: 4px 8px; } }
+@media (max-width: 1100px) { [data-layout="parcours"] .workspace-nav { padding: 0 24px; }[data-layout="parcours"] .workspace-content { padding: 25px 24px 40px; }[data-layout="parcours"] .station-body { grid-template-columns: 1fr; gap: 18px; }[data-layout="parcours"] .station-markets { border-left: 0; border-top: 1px solid #dbe5ee; padding: 16px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }[data-layout="parcours"] .station-markets > h4 { grid-column: 1 / -1; padding-bottom: 0; }[data-layout="parcours"] .market-book { padding: 0; }[data-layout="parcours"] .temperature-chart svg { max-height: 250px; }[data-layout="parcours"] .directory-key { display: none; } }
+@media (max-width: 640px) { [data-layout="parcours"] .workspace-nav { padding: 15px 16px 0; min-height: 102px; flex-wrap: wrap; gap: 14px; }[data-layout="parcours"] .wordmark { font-size: 21px; }[data-layout="parcours"] .wordmark-sub { font-size: 7px; }[data-layout="parcours"] .workspace-version { font-size: 9px; }[data-layout="parcours"] .workspace-tabs { width: 100%; order: 3; gap: 24px; font-size: 11px; height: 36px; }[data-layout="parcours"] .workspace-content { padding: 21px 14px 30px; }[data-layout="parcours"] .page-heading { align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-bottom: 17px; }[data-layout="parcours"] .feed-status { font-size: 9px; }[data-layout="parcours"] .feed-status strong { font-size: 10px; }[data-layout="parcours"] .eyebrow { font-size: 8px; }[data-layout="parcours"] .board-controls > div { flex-wrap: wrap; gap: 10px; }[data-layout="parcours"] .board-controls details { min-width: 120px; }[data-layout="parcours"] .station-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 18px; }[data-layout="parcours"] .overview-reading { padding: 12px; border-bottom: 1px solid #dce4eb; }[data-layout="parcours"] .overview-temperature { font-size: 25px; }[data-layout="parcours"] .station-header { padding: 12px; }[data-layout="parcours"] .station-name { font-size: 16px; }[data-layout="parcours"] .station-body { padding: 12px; gap: 15px; }[data-layout="parcours"] .station-header > button > div:last-child { gap: 0; }[data-layout="parcours"] .station-header > button > div:last-child > div:first-child > p:first-child { font-size: 14px; }[data-layout="parcours"] .station-header > button > div:last-child > div:first-child > p:last-child { font-size: 9px; }[data-layout="parcours"] .current-temperature { font-size: 31px; }[data-layout="parcours"] .station-markets { display: block; }[data-layout="parcours"] .station-markets .market-book { padding: 12px 0; }[data-layout="parcours"] .observation-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }[data-layout="parcours"] .observation-reading { border-bottom: 1px solid #e1e7ed; padding: 7px; }[data-layout="parcours"] .temperature-chart > div:first-child > div { flex-wrap: wrap; font-size: 8px; }[data-layout="parcours"] .directory-search { width: 100%; }[data-layout="parcours"] .directory-filters { padding: 14px; gap: 13px 15px; }[data-layout="parcours"] .source-filters { width: 100%; }[data-layout="parcours"] .directory-filters select { max-width: 150px; }[data-layout="parcours"] .directory-table { min-width: 850px; }[data-layout="parcours"] .directory-table thead th, [data-layout="parcours"] .directory-table tbody td, [data-layout="parcours"] .directory-table tbody th { padding: 11px 12px; }[data-layout="parcours"] .timezone-heading { gap: 10px; padding: 12px; flex-wrap: wrap; }[data-layout="parcours"] .timezone-names { display: none; }[data-layout="parcours"] .timezone-clock { font-size: 14px; }[data-layout="parcours"] .directory-results { font-size: 10px; }[data-layout="parcours"] .temperature-chart svg { max-height: none; } }
+
+/* La largeur intrinsèque du tableau ne doit pas agrandir les colonnes de la grille. */
+[data-layout="parcours"] .timezone-directory, [data-layout="parcours"] .timezone-group { min-width: 0; max-width: 100%; }
+[data-layout="parcours"] .directory-table-wrap { min-width: 0; width: 100%; max-width: 100%; }
+
+/* Sur téléphone, les métadonnées ne partagent pas la ligne de la mesure principale. */
+@media (max-width: 640px) {
+  [data-layout="parcours"] .weather-instruments > div:first-of-type { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  [data-layout="parcours"] .weather-instruments > div:first-of-type > div:first-child { grid-column: 1; grid-row: 1; }
+  [data-layout="parcours"] .weather-instruments > div:first-of-type > div:nth-child(3) { grid-column: 1; grid-row: 2; max-width: 100%; justify-content: flex-start; gap: 4px 9px; }
+  [data-layout="parcours"] .weather-instruments > div:first-of-type > div:nth-child(2) { grid-column: 1; grid-row: 3; }
+  [data-layout="parcours"] .weather-instruments > div:first-of-type > div:nth-child(2) > div { scrollbar-width: thin; scrollbar-color: #b9cad9 transparent; }
+  [data-layout="parcours"] .weather-instruments > div:first-of-type > div:nth-child(2) > div::-webkit-scrollbar { height: 4px; }
+  [data-layout="parcours"] .weather-instruments > div:first-of-type > div:nth-child(2) > div::-webkit-scrollbar-thumb { background: #b9cad9; border-radius: 2px; }
+}
+
+/* Le parcours reste continu : les deux étapes affichent toutes les villes. */
+[data-layout="parcours"] .journey-board { min-width: 0; }
+[data-layout="parcours"] .journey-panorama { margin-bottom: 16px; }
+[data-layout="parcours"] .panorama-title { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 10px; }
+[data-layout="parcours"] .panorama-title h2 { font-size: 13px; font-weight: 650; color: #35536b; }
+[data-layout="parcours"] .panorama-title > span { font-size: 10px; color: #8093a3; }
+[data-layout="parcours"] .journey-panorama .station-overview { margin-bottom: 0; }
+[data-layout="parcours"] .journey-navigation { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 26px; min-height: 52px; padding: 0 16px; margin: 0 -1px 28px; border: 1px solid #cbd7e1; background: #fff; }
+[data-layout="parcours"] .journey-stages { display: flex; flex-shrink: 0; gap: 22px; }
+[data-layout="parcours"] .journey-stages a { display: flex; align-items: center; gap: 7px; color: #2465a4; font-size: 12px; font-weight: 700; white-space: nowrap; }
+[data-layout="parcours"] .journey-stages a span { font-family: ui-monospace, monospace; font-size: 10px; color: #7c9bb6; }
+[data-layout="parcours"] .journey-city-links { display: flex; align-items: center; flex: 1; gap: 16px; overflow-x: auto; min-width: 0; scrollbar-width: thin; padding: 10px 0; }
+[data-layout="parcours"] .journey-city-links a { color: #647e93; font-size: 10px; white-space: nowrap; }
+[data-layout="parcours"] .journey-navigation a:hover { color: #174e83; text-decoration: underline; }
+[data-layout="parcours"] .journey-section { scroll-margin-top: 76px; margin-bottom: 42px; }
+[data-layout="parcours"] .journey-section-title { display: flex; align-items: center; gap: 15px; padding: 0 0 16px; border-bottom: 1px solid #cedbe5; margin-bottom: 20px; }
+[data-layout="parcours"] .journey-number { font-size: 31px; font-weight: 400; letter-spacing: -.05em; color: #7f9fb9; font-family: ui-monospace, monospace; line-height: 1; }
+[data-layout="parcours"] .journey-section-title h2 { font-size: 21px; font-weight: 650; letter-spacing: -.025em; color: #294f6c; }
+[data-layout="parcours"] .journey-section-title p { font-size: 11px; color: #7b8f9f; margin-top: 4px; }
+[data-layout="parcours"] .journey-section-title > a { display: flex; align-items: center; gap: 7px; margin-left: auto; color: #2465a4; font-size: 11px; }
+[data-layout="parcours"] .journey-weather-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+[data-layout="parcours"] .journey-market-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+[data-layout="parcours"] .journey-weather-panel, [data-layout="parcours"] .journey-market-panel { min-width: 0; scroll-margin-top: 76px; }
+[data-layout="parcours"] .journey-weather-body { padding: 16px; }
+[data-layout="parcours"] .journey-weather-body > div:first-child:not(.weather-instruments) { margin-bottom: 12px; }
+[data-layout="parcours"] .journey-weather-panel .weather-instruments { width: 100%; }
+[data-layout="parcours"] .journey-weather-panel .temperature-chart svg { max-height: 225px; }
+[data-layout="parcours"] .journey-weather-panel .current-temperature { font-size: 32px; }
+[data-layout="parcours"] .journey-weather-panel .weather-instruments > div:first-of-type > div:nth-child(3) { max-width: 215px; }
+[data-layout="parcours"] .journey-weather-panel .observation-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+[data-layout="parcours"] .journey-weather-panel .observation-reading { border-bottom: 1px solid #e1e7ed; }
+[data-layout="parcours"] .journey-panel-footer { padding: 11px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #dde6ed; font-size: 10px; }
+[data-layout="parcours"] .journey-panel-footer > span { color: #8a9daa; }
+[data-layout="parcours"] .journey-panel-footer a { display: inline-flex; gap: 5px; align-items: center; color: #2465a4; font-weight: 600; }
+[data-layout="parcours"] .journey-panel-footer a:hover { text-decoration: underline; }
+[data-layout="parcours"] .journey-market-body { padding: 16px; }
+[data-layout="parcours"] .journey-market-body .station-markets { padding: 0; margin: 0; border: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; }
+[data-layout="parcours"] .journey-market-body .station-markets > h4 { grid-column: 1 / -1; padding-bottom: 0; }
+[data-layout="parcours"] .journey-market-body .station-markets .market-book { min-width: 0; padding: 0 0 12px; }
+[data-layout="parcours"] .journey-signal { padding: 10px 12px; margin-bottom: 18px; border-left: 3px solid currentColor; font-size: 11px; }
+[data-layout="parcours"] .journey-signal strong { font-weight: 650; }
+[data-layout="parcours"] .journey-signal p { font-size: 10px; margin-top: 4px; line-height: 1.5; }
+[data-layout="parcours"] .market-station-warning { display: flex; align-items: center; gap: 8px; padding: 10px 12px; color: #a16b24; background: #fff8e8; margin-bottom: 14px; font-size: 11px; }
+[data-layout="parcours"] .weather-disabled { display: flex; align-items: center; gap: 8px; color: #758b9a; padding: 20px 0; font-size: 11px; }
+
+/* Le répertoire suit les fuseaux : l'horloge est un repère pour toutes ses stations. */
+[data-layout="parcours"] .journey-filter-drawer { border: 1px solid #cbd7e1; background: #fff; }
+[data-layout="parcours"] .journey-filter-drawer summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; list-style: none; padding: 13px 16px; color: #446a87; font-size: 11px; }
+[data-layout="parcours"] .journey-filter-drawer summary::-webkit-details-marker { display: none; }
+[data-layout="parcours"] .journey-filter-drawer summary > span { display: inline-flex; gap: 9px; align-items: center; }
+[data-layout="parcours"] .journey-filter-drawer summary > span:last-child { color: #8397a7; font-size: 10px; }
+[data-layout="parcours"] .journey-filter-drawer[open] summary > span:last-child > span { transform: rotate(180deg); }
+[data-layout="parcours"] .journey-filter-drawer .directory-filters { border: 0; border-top: 1px solid #e2e9ee; background: #f8fafc; }
+[data-layout="parcours"] .station-timeline { display: grid; gap: 28px; min-width: 0; }
+[data-layout="parcours"] .timeline-group { display: grid; grid-template-columns: 145px minmax(0, 1fr); gap: 28px; border-bottom: 1px solid #d4dfe7; padding-bottom: 28px; min-width: 0; }
+[data-layout="parcours"] .timeline-clock-column { position: sticky; top: 20px; align-self: start; border-left: 2px solid #bed1e0; padding-left: 17px; }
+[data-layout="parcours"] .timeline-clock-column button { display: flex; align-items: center; gap: 6px; color: #496d88; font-size: 11px; }
+[data-layout="parcours"] .timeline-clock-column strong { font-weight: 650; }
+[data-layout="parcours"] .timeline-clock { display: block; font-family: ui-monospace, monospace; font-size: 25px; letter-spacing: -.05em; color: #2465a4; margin-top: 14px; }
+[data-layout="parcours"] .timeline-local-label { display: block; font-size: 8px; letter-spacing: .13em; color: #91a4b3; margin-top: 5px; }
+[data-layout="parcours"] .timeline-clock-column > p { font-size: 11px; color: #6b859a; margin-top: 14px; }
+[data-layout="parcours"] .timeline-clock-column > .timeline-tz-names { font-size: 9px; line-height: 1.6; color: #8c9eac; overflow-wrap: anywhere; }
+[data-layout="parcours"] .timeline-stations { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; min-width: 0; }
+[data-layout="parcours"] .timeline-station { background: #fff; border: 1px solid #cedbe5; min-width: 0; padding: 18px; }
+[data-layout="parcours"] .timeline-station header { display: flex; justify-content: space-between; gap: 10px; align-items: start; border-bottom: 1px solid #e2e9ef; padding-bottom: 13px; }
+[data-layout="parcours"] .timeline-station h2 { font-size: 17px; letter-spacing: -.02em; color: #365c78; font-weight: 650; margin-top: 5px; }
+[data-layout="parcours"] .timeline-station header > .directory-time { font-size: 11px; color: #7c92a5; }
+[data-layout="parcours"] .station-timing { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 15px 0 18px; }
+[data-layout="parcours"] .station-timing dt { font-size: 9px; color: #8b9daa; margin-bottom: 5px; }
+[data-layout="parcours"] .station-timing dd { font-size: 11px; color: #49687f; font-family: ui-monospace, monospace; }
+[data-layout="parcours"] .station-timing .trading-allowed { color: #43786d; }[data-layout="parcours"] .station-timing .trading-ignored { color: #ac711d; }
+[data-layout="parcours"] .timeline-station h3 { font-size: 9px; color: #899dad; letter-spacing: .05em; font-weight: 600; margin-bottom: 9px; }
+[data-layout="parcours"] .timeline-station .directory-links { min-width: 0; gap: 8px 16px; line-height: 1.5; }
+[data-layout="parcours"] .timeline-station .directory-links > span { color: #90a2af; font-size: 10px; }
+[data-layout="parcours"] .timeline-resolution { border-top: 1px solid #e2e9ef; padding-top: 13px; margin-top: 16px; }
+[data-layout="parcours"] .timeline-resolution > p { color: #90a2af; font-size: 10px; }
+[data-layout="parcours"] .timeline-station .resolution-links { min-width: 0; }
+[data-layout="parcours"] .timeline-station .resolution-links a { flex-wrap: wrap; line-height: 1.5; }
+[data-layout="parcours"] .timeline-station .resolution-links a > span:first-child { overflow-wrap: anywhere; }
+
+@media (min-width: 1550px) {
+  [data-layout="parcours"] .journey-weather-grid, [data-layout="parcours"] .timeline-stations { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 1300px) {
+  [data-layout="parcours"] .journey-market-body .station-markets { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 1000px) {
+  [data-layout="parcours"] .journey-weather-grid, [data-layout="parcours"] .journey-market-grid { grid-template-columns: minmax(0, 1fr); }
+  [data-layout="parcours"] .journey-market-body .station-markets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  [data-layout="parcours"] .timeline-group { grid-template-columns: 115px minmax(0, 1fr); gap: 18px; }
+  [data-layout="parcours"] .timeline-stations { grid-template-columns: minmax(0, 1fr); }
+  [data-layout="parcours"] .timeline-clock { font-size: 21px; }
+}
+@media (max-width: 640px) {
+  [data-layout="parcours"] .panorama-title > span { font-size: 9px; }
+  [data-layout="parcours"] .journey-navigation { flex-wrap: wrap; gap: 0; padding: 10px 12px 0; margin-bottom: 22px; }
+  [data-layout="parcours"] .journey-stages { gap: 24px; }
+  [data-layout="parcours"] .journey-city-links { flex-basis: 100%; gap: 15px; padding: 10px 0; }
+  [data-layout="parcours"] .journey-section, [data-layout="parcours"] .journey-weather-panel, [data-layout="parcours"] .journey-market-panel { scroll-margin-top: 99px; }
+  [data-layout="parcours"] .journey-section-title { flex-wrap: wrap; gap: 9px; margin-bottom: 14px; padding-bottom: 13px; }
+  [data-layout="parcours"] .journey-number { font-size: 25px; }
+  [data-layout="parcours"] .journey-section-title h2 { font-size: 19px; }
+  [data-layout="parcours"] .journey-section-title p { font-size: 10px; }
+  [data-layout="parcours"] .journey-section-title > a { width: 100%; margin-left: 39px; font-size: 10px; }
+  [data-layout="parcours"] .journey-weather-body, [data-layout="parcours"] .journey-market-body { padding: 12px; }
+  [data-layout="parcours"] .journey-weather-panel .weather-instruments > div:first-of-type > div:nth-child(3) { max-width: 100%; }
+  [data-layout="parcours"] .journey-weather-panel .temperature-chart svg { max-height: none; }
+  [data-layout="parcours"] .journey-market-body .station-markets { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  [data-layout="parcours"] .journey-panel-footer { padding: 11px 12px; font-size: 9px; }
+  [data-layout="parcours"] .journey-filter-drawer summary { padding: 12px; }
+  [data-layout="parcours"] .journey-filter-drawer summary > span:last-child { font-size: 9px; max-width: 42%; text-align: right; }
+  [data-layout="parcours"] .timeline-group { grid-template-columns: minmax(0, 1fr); gap: 13px; padding-bottom: 20px; }
+  [data-layout="parcours"] .timeline-clock-column { position: static; display: grid; grid-template-columns: 1fr auto; column-gap: 12px; padding-left: 12px; }
+  [data-layout="parcours"] .timeline-clock { grid-column: 2; grid-row: 1 / 3; margin: 0; font-size: 22px; }
+  [data-layout="parcours"] .timeline-local-label { grid-column: 2; text-align: right; grid-row: 3; margin: 3px 0 0; }
+  [data-layout="parcours"] .timeline-clock-column > p { margin: 5px 0 0; font-size: 10px; }
+  [data-layout="parcours"] .timeline-clock-column > .timeline-tz-names { grid-column: 1 / -1; font-size: 8px; margin-top: 6px; }
+  [data-layout="parcours"] .timeline-station { padding: 14px; }
+  [data-layout="parcours"] .timeline-station h2 { font-size: 16px; }
+  [data-layout="parcours"] .station-timing { gap: 8px; }
+  [data-layout="parcours"] .station-timing dt { font-size: 8px; }
+  [data-layout="parcours"] .station-timing dd { font-size: 10px; }
+}

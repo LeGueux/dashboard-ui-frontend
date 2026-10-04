@@ -1,6 +1,13 @@
 <script setup lang="ts">
 const { markets, weatherSnapshots, weatherTradingSignals, loading, status, lastSyncAt, error } = useDustMarkets()
 const runtime = useRuntimeConfig()
+const { dashboardLayout } = useDashboardLayout()
+const pageTitle = computed(() => ({
+  weather: 'Veille des températures',
+  comparatif: 'Comparatif des villes',
+  dossiers: 'Dossiers de veille',
+  parcours: 'De la météo aux marchés'
+})[dashboardLayout.value])
 const airportCount = computed(() => new Set(markets.value.map(market => market.airport).filter(Boolean)).size)
 const statusLabel = computed(() => {
   if (status.value === 'live') return 'Flux connecté'
@@ -12,7 +19,8 @@ const statusLabel = computed(() => {
 
 <template>
   <main class="observatory">
-    <header class="workspace-nav">
+    <DossierNavigation v-if="dashboardLayout === 'dossiers'" />
+    <header v-else class="workspace-nav">
       <NuxtLink to="/" class="wordmark" aria-label="Dust, tableau de veille">
         <UIcon name="i-lucide-cloud-sun" class="size-6" />
         <span>DUST<span class="wordmark-sub">OBSERVATOIRE MÉTÉO</span></span>
@@ -29,7 +37,7 @@ const statusLabel = computed(() => {
           <p class="eyebrow">
             OBSERVATIONS / PRÉVISIONS / MARCHÉS
           </p>
-          <h1>Veille des températures</h1>
+          <h1>{{ pageTitle }}</h1>
           <p class="page-description">
             {{ airportCount }} villes suivies · {{ markets.length }} marchés actifs
           </p>

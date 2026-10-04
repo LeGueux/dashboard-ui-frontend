@@ -1,4 +1,7 @@
 <script setup lang="ts">
+const { dashboardLayout } = useDashboardLayout()
+// Les quatre présentations partagent les filtres, les calculs et le flux de données.
+
 const { filteredLinks, searchQuery, loading, error, totalAirports } = useWeatherLinks()
 
 // ─── Filters ────────────────────────────────────────────────────────────────
@@ -226,158 +229,560 @@ function isTzCollapsed(tz: string) {
 </script>
 
 <template>
-  <main class="observatory">
-    <header class="workspace-nav">
-      <NuxtLink to="/" class="wordmark">
-        <UIcon name="i-lucide-cloud-sun" class="size-6" />
-        <span>DUST<span class="wordmark-sub">OBSERVATOIRE MÉTÉO</span></span>
-      </NuxtLink>
-      <nav class="workspace-tabs" aria-label="Navigation principale">
-        <NuxtLink to="/">Tableau de veille</NuxtLink>
-        <NuxtLink to="/weather-links" aria-current="page">Stations & sources</NuxtLink>
-      </nav>
-      <span class="workspace-version">RÉPERTOIRE</span>
-    </header>
-    <div class="workspace-content station-directory">
-      <div class="page-heading">
-        <div>
-          <p class="eyebrow">
-            RÉSEAU D'OBSERVATION
-          </p>
-          <h1>Stations & sources</h1>
-          <p class="page-description">
-            {{ totalAirports }} stations référencées · classées par heure locale
-          </p>
-        </div>
-        <UInput
-          v-model="searchQuery"
-          placeholder="Ville ou code ICAO"
-          icon="i-lucide-search"
-          aria-label="Rechercher une station"
-          class="directory-search"
-        />
-      </div>
-      <div class="directory-filters">
-        <label><span>Unité</span><select v-model="filterUnit"><option value="">Toutes</option><option value="C">°C</option><option value="F">°F</option></select></label>
-        <label><span>Trading</span><select v-model="filterTrading"><option value="">Tous statuts</option><option value="tradable">Autorisé</option><option value="ignored">Ignoré</option></select></label>
-        <label><span>Région</span><select v-model="filterRegion"><option value="">Toutes régions</option><option value="Asia">Asie / Pacifique</option><option value="Europe">Europe</option><option value="America">Amérique</option><option value="Africa">Afrique</option><option value="Pacific">Pacifique (îles)</option></select></label>
-        <label><span>Trading ≤</span><input
-          v-model.number="filterTradingHourMax"
-          type="number"
-          min="0"
-          max="24"
-          aria-label="Heure trading maximale"
-        > h</label>
-        <label><span>Dust ≤</span><input
-          v-model.number="filterDustHourMax"
-          type="number"
-          min="0"
-          max="24"
-          aria-label="Heure dust maximale"
-        > h</label>
-        <fieldset class="source-filters">
-          <legend>Sources disponibles</legend>
-          <label><input v-model="filterHasWU" type="checkbox">WU</label>
-          <label><input v-model="filterHasWETHR" type="checkbox">WETHR</label>
-          <label><input v-model="filterHasMETAR" type="checkbox">METAR</label>
-          <label><input v-model="filterHasNWS" type="checkbox">NWS</label>
-        </fieldset>
-      </div>
-      <div class="directory-results">
-        <span>{{ activeFilteredLinks.length }} stations affichées</span><button v-if="hasActiveFilters" type="button" @click="resetFilters">
-          Réinitialiser les filtres
-        </button><span class="directory-key">T : début trading · D : début dust · heures locales</span>
-      </div>
-      <div v-if="loading" class="directory-loading">
-        Chargement des stations…
-      </div>
-      <UAlert
-        v-else-if="error"
-        color="error"
-        title="Connexion indisponible"
-        :description="error"
-      />
-      <div v-else-if="!activeFilteredLinks.length" class="directory-loading">
-        Aucune station ne correspond à cette recherche.
-      </div>
-      <div v-else class="timezone-directory">
-        <section v-for="group in groupedByTimezone" :key="group.key" class="timezone-group">
-          <button
-            type="button"
-            class="timezone-heading"
-            :aria-expanded="!isTzCollapsed(group.key)"
-            @click="toggleTz(group.key)"
-          >
-            <UIcon :name="isTzCollapsed(group.key) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'" class="size-4" />
-            <strong>{{ group.offsetText }}</strong><span class="timezone-clock">{{ groupNowText(group) }}</span><span>{{ group.airports.length }} stations</span><span class="timezone-names">{{ group.tzSummary }}</span>
-          </button>
-          <div v-if="!isTzCollapsed(group.key)" class="directory-table-wrap">
-            <table class="directory-table">
-              <thead>
-                <tr>
-                  <th scope="col">
-                    Station / ville
-                  </th><th scope="col">
-                    Heure locale
-                  </th><th scope="col">
-                    T / D
-                  </th><th scope="col">
-                    Unité
-                  </th><th scope="col">
-                    Trading
-                  </th><th scope="col">
-                    Sources météo
-                  </th><th scope="col">
-                    Résolution Polymarket
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="airport in group.airports" :key="airport.code">
-                  <th scope="row">
-                    <span class="station-code">{{ airport.code }}</span><span class="directory-city">{{ airport.city || 'Ville non renseignée' }}</span>
-                  </th>
-                  <td class="directory-time">
-                    {{ airportLocalNow(airport) }}
-                  </td>
-                  <td class="directory-time">
-                    <div>T {{ timeLabel(airport.airportData?.tradingMinLocalHour, airport.airportData?.tradingMinLocalMinute) }}</div><div class="text-slate-500">
-                      D {{ timeLabel(airport.airportData?.dustMinLocalHour, airport.airportData?.dustMinLocalMinute) }}
-                    </div>
-                  </td>
-                  <td>{{ airport.airportData?.unit ? `°${airport.airportData.unit}` : '—' }}</td>
-                  <td :class="airport.airportData?.ignoreForTrading ? 'trading-ignored' : 'trading-allowed'">
-                    {{ airport.airportData?.ignoreForTrading ? 'Ignoré' : 'Autorisé' }}
-                  </td>
-                  <td>
-                    <div class="directory-links">
-                      <a
-                        v-for="link in airport.links"
-                        :key="`${airport.code}-${link.label}`"
-                        :href="link.url"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >{{ link.label }}<UIcon name="i-lucide-arrow-up-right" class="size-3" /></a><span v-if="!airport.links?.length">—</span>
-                    </div>
-                  </td>
-                  <td>
-                    <div v-if="airport.resolutionSources?.length" class="resolution-links">
-                      <a
-                        v-for="source in airport.resolutionSources"
-                        :key="source.eventSlug || `${source.date}-${source.resolutionSource}`"
-                        :href="source.resolutionSource || undefined"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        :class="{ 'resolution-warning': source.matchesAirportCode === false }"
-                      ><span>{{ source.date || 'Date inconnue' }} · {{ source.resolutionProvider || 'Source inconnue' }}</span><strong>{{ source.resolutionAirportCode || '?' }}</strong><UIcon :name="source.matchesAirportCode === false ? 'i-lucide-triangle-alert' : 'i-lucide-arrow-up-right'" class="size-3" /></a>
-                    </div><span v-else>—</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+  <template v-if="dashboardLayout === 'weather'">
+    <main class="observatory">
+      <header class="workspace-nav">
+        <NuxtLink to="/" class="wordmark">
+          <UIcon name="i-lucide-cloud-sun" class="size-6" />
+          <span>DUST<span class="wordmark-sub">OBSERVATOIRE MÉTÉO</span></span>
+        </NuxtLink>
+        <nav class="workspace-tabs" aria-label="Navigation principale">
+          <NuxtLink to="/">Tableau de veille</NuxtLink>
+          <NuxtLink to="/weather-links" aria-current="page">Stations & sources</NuxtLink>
+        </nav>
+        <span class="workspace-version">RÉPERTOIRE</span>
+      </header>
+      <div class="workspace-content station-directory">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">
+              RÉSEAU D'OBSERVATION
+            </p>
+            <h1>Stations & sources</h1>
+            <p class="page-description">
+              {{ totalAirports }} stations référencées · classées par heure locale
+            </p>
           </div>
-        </section>
+          <UInput
+            v-model="searchQuery"
+            placeholder="Ville ou code ICAO"
+            icon="i-lucide-search"
+            aria-label="Rechercher une station"
+            class="directory-search"
+          />
+        </div>
+        <div class="directory-filters">
+          <label><span>Unité</span><select v-model="filterUnit"><option value="">Toutes</option><option value="C">°C</option><option value="F">°F</option></select></label>
+          <label><span>Trading</span><select v-model="filterTrading"><option value="">Tous statuts</option><option value="tradable">Autorisé</option><option value="ignored">Ignoré</option></select></label>
+          <label><span>Région</span><select v-model="filterRegion"><option value="">Toutes régions</option><option value="Asia">Asie / Pacifique</option><option value="Europe">Europe</option><option value="America">Amérique</option><option value="Africa">Afrique</option><option value="Pacific">Pacifique (îles)</option></select></label>
+          <label><span>Trading ≤</span><input
+            v-model.number="filterTradingHourMax"
+            type="number"
+            min="0"
+            max="24"
+            aria-label="Heure trading maximale"
+          > h</label>
+          <label><span>Dust ≤</span><input
+            v-model.number="filterDustHourMax"
+            type="number"
+            min="0"
+            max="24"
+            aria-label="Heure dust maximale"
+          > h</label>
+          <fieldset class="source-filters">
+            <legend>Sources disponibles</legend>
+            <label><input v-model="filterHasWU" type="checkbox">WU</label>
+            <label><input v-model="filterHasWETHR" type="checkbox">WETHR</label>
+            <label><input v-model="filterHasMETAR" type="checkbox">METAR</label>
+            <label><input v-model="filterHasNWS" type="checkbox">NWS</label>
+          </fieldset>
+        </div>
+        <div class="directory-results">
+          <span>{{ activeFilteredLinks.length }} stations affichées</span><button v-if="hasActiveFilters" type="button" @click="resetFilters">
+            Réinitialiser les filtres
+          </button><span class="directory-key">T : début trading · D : début dust · heures locales</span>
+        </div>
+        <div v-if="loading" class="directory-loading">
+          Chargement des stations…
+        </div>
+        <UAlert
+          v-else-if="error"
+          color="error"
+          title="Connexion indisponible"
+          :description="error"
+        />
+        <div v-else-if="!activeFilteredLinks.length" class="directory-loading">
+          Aucune station ne correspond à cette recherche.
+        </div>
+        <div v-else class="timezone-directory">
+          <section v-for="group in groupedByTimezone" :key="group.key" class="timezone-group">
+            <button
+              type="button"
+              class="timezone-heading"
+              :aria-expanded="!isTzCollapsed(group.key)"
+              @click="toggleTz(group.key)"
+            >
+              <UIcon :name="isTzCollapsed(group.key) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'" class="size-4" />
+              <strong>{{ group.offsetText }}</strong><span class="timezone-clock">{{ groupNowText(group) }}</span><span>{{ group.airports.length }} stations</span><span class="timezone-names">{{ group.tzSummary }}</span>
+            </button>
+            <div v-if="!isTzCollapsed(group.key)" class="directory-table-wrap">
+              <table class="directory-table">
+                <thead>
+                  <tr>
+                    <th scope="col">
+                      Station / ville
+                    </th><th scope="col">
+                      Heure locale
+                    </th><th scope="col">
+                      T / D
+                    </th><th scope="col">
+                      Unité
+                    </th><th scope="col">
+                      Trading
+                    </th><th scope="col">
+                      Sources météo
+                    </th><th scope="col">
+                      Résolution Polymarket
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="airport in group.airports" :key="airport.code">
+                    <th scope="row">
+                      <span class="station-code">{{ airport.code }}</span><span class="directory-city">{{ airport.city || 'Ville non renseignée' }}</span>
+                    </th>
+                    <td class="directory-time">
+                      {{ airportLocalNow(airport) }}
+                    </td>
+                    <td class="directory-time">
+                      <div>T {{ timeLabel(airport.airportData?.tradingMinLocalHour, airport.airportData?.tradingMinLocalMinute) }}</div><div class="text-slate-500">
+                        D {{ timeLabel(airport.airportData?.dustMinLocalHour, airport.airportData?.dustMinLocalMinute) }}
+                      </div>
+                    </td>
+                    <td>{{ airport.airportData?.unit ? `°${airport.airportData.unit}` : '—' }}</td>
+                    <td :class="airport.airportData?.ignoreForTrading ? 'trading-ignored' : 'trading-allowed'">
+                      {{ airport.airportData?.ignoreForTrading ? 'Ignoré' : 'Autorisé' }}
+                    </td>
+                    <td>
+                      <div class="directory-links">
+                        <a
+                          v-for="link in airport.links"
+                          :key="`${airport.code}-${link.label}`"
+                          :href="link.url"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >{{ link.label }}<UIcon name="i-lucide-arrow-up-right" class="size-3" /></a><span v-if="!airport.links?.length">—</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div v-if="airport.resolutionSources?.length" class="resolution-links">
+                        <a
+                          v-for="source in airport.resolutionSources"
+                          :key="source.eventSlug || `${source.date}-${source.resolutionSource}`"
+                          :href="source.resolutionSource || undefined"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          :class="{ 'resolution-warning': source.matchesAirportCode === false }"
+                        ><span>{{ source.date || 'Date inconnue' }} · {{ source.resolutionProvider || 'Source inconnue' }}</span><strong>{{ source.resolutionAirportCode || '?' }}</strong><UIcon :name="source.matchesAirportCode === false ? 'i-lucide-triangle-alert' : 'i-lucide-arrow-up-right'" class="size-3" /></a>
+                      </div><span v-else>—</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
       </div>
-    </div>
-  </main>
+    </main>
+  </template>
+  <template v-else-if="dashboardLayout === 'comparatif'">
+    <main class="observatory catalog-page">
+      <header class="workspace-nav">
+        <NuxtLink to="/" class="wordmark">
+          <UIcon name="i-lucide-cloud-sun" class="size-6" />
+          <span>DUST<span class="wordmark-sub">OBSERVATOIRE MÉTÉO</span></span>
+        </NuxtLink>
+        <nav class="workspace-tabs" aria-label="Navigation principale">
+          <NuxtLink to="/">Comparatif des villes</NuxtLink>
+          <NuxtLink to="/weather-links" aria-current="page">Stations & sources</NuxtLink>
+        </nav>
+        <span class="workspace-version">RÉPERTOIRE</span>
+      </header>
+
+      <div class="workspace-content">
+        <header class="page-heading">
+          <div>
+            <p class="eyebrow">
+              CATALOGUE DU RÉSEAU MÉTÉO
+            </p><h1>Explorer les stations</h1><p class="page-description">
+              {{ totalAirports }} stations · toutes les sources, tous les horaires
+            </p>
+          </div><UInput
+            v-model="searchQuery"
+            placeholder="Ville ou code ICAO"
+            icon="i-lucide-search"
+            aria-label="Rechercher une station"
+            class="directory-search"
+          />
+        </header>
+        <div class="catalog-layout">
+          <aside class="catalog-sidebar">
+            <h2>Affiner le catalogue</h2>
+            <div class="directory-filters explorer-filters">
+              <label><span>Unité</span><select v-model="filterUnit"><option value="">Toutes</option><option value="C">°C</option><option value="F">°F</option></select></label>
+              <label><span>Trading</span><select v-model="filterTrading"><option value="">Tous statuts</option><option value="tradable">Autorisé</option><option value="ignored">Ignoré</option></select></label>
+              <label><span>Région</span><select v-model="filterRegion"><option value="">Toutes régions</option><option value="Asia">Asie / Pacifique</option><option value="Europe">Europe</option><option value="America">Amérique</option><option value="Africa">Afrique</option><option value="Pacific">Pacifique (îles)</option></select></label>
+              <label><span>Trading ≤</span><input
+                v-model.number="filterTradingHourMax"
+                type="number"
+                min="0"
+                max="24"
+                aria-label="Heure trading maximale"
+              > h</label>
+              <label><span>Dust ≤</span><input
+                v-model.number="filterDustHourMax"
+                type="number"
+                min="0"
+                max="24"
+                aria-label="Heure dust maximale"
+              > h</label>
+              <fieldset class="source-filters">
+                <legend>Sources disponibles</legend>
+                <label><input v-model="filterHasWU" type="checkbox">WU</label>
+                <label><input v-model="filterHasWETHR" type="checkbox">WETHR</label>
+                <label><input v-model="filterHasMETAR" type="checkbox">METAR</label>
+                <label><input v-model="filterHasNWS" type="checkbox">NWS</label>
+              </fieldset>
+            </div>
+
+            <button
+              v-if="hasActiveFilters"
+              type="button"
+              class="catalog-reset"
+              @click="resetFilters"
+            >
+              Réinitialiser les filtres
+            </button>
+            <p class="catalog-count">
+              {{ activeFilteredLinks.length }} stations affichées
+            </p>
+          </aside>
+          <div class="catalog-results">
+            <div v-if="loading" class="directory-loading">
+              Chargement des stations…
+            </div><UAlert
+              v-else-if="error"
+              color="error"
+              title="Connexion indisponible"
+              :description="error"
+            /><div v-else-if="!activeFilteredLinks.length" class="directory-loading">
+              Aucune station ne correspond à cette recherche.
+            </div>
+            <div v-else class="catalog-timezones">
+              <section v-for="group in groupedByTimezone" :key="group.key" class="catalog-group">
+                <button
+                  type="button"
+                  class="timezone-heading"
+                  :aria-expanded="!isTzCollapsed(group.key)"
+                  @click="toggleTz(group.key)"
+                >
+                  <UIcon :name="isTzCollapsed(group.key) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'" class="size-4" /><strong>{{ group.offsetText }}</strong><span class="timezone-clock">{{ groupNowText(group) }}</span><span>{{ group.airports.length }} stations</span><span class="timezone-names">{{ group.tzSummary }}</span>
+                </button>
+                <div v-if="!isTzCollapsed(group.key)" class="catalog-card-grid">
+                  <article v-for="airport in group.airports" :key="airport.code" class="catalog-station">
+                    <header class="catalog-station-heading">
+                      <div><span class="station-code">{{ airport.code }}</span><h3>{{ airport.city || 'Ville non renseignée' }}</h3></div><span class="catalog-localtime">{{ airportLocalNow(airport) }}</span>
+                    </header>
+                    <dl class="station-facts">
+                      <div><dt>Trading dès</dt><dd>{{ timeLabel(airport.airportData?.tradingMinLocalHour, airport.airportData?.tradingMinLocalMinute) }}</dd></div><div><dt>Dust dès</dt><dd>{{ timeLabel(airport.airportData?.dustMinLocalHour, airport.airportData?.dustMinLocalMinute) }}</dd></div><div><dt>Unité</dt><dd>{{ airport.airportData?.unit ? `°${airport.airportData.unit}` : '—' }}</dd></div><div>
+                        <dt>Trading</dt><dd :class="airport.airportData?.ignoreForTrading ? 'trading-ignored' : 'trading-allowed'">
+                          {{ airport.airportData?.ignoreForTrading ? 'Ignoré' : 'Autorisé' }}
+                        </dd>
+                      </div>
+                    </dl>
+                    <section class="catalog-sources">
+                      <h4>Sources météo</h4><div class="directory-links">
+                        <a
+                          v-for="link in airport.links"
+                          :key="`${airport.code}-${link.label}`"
+                          :href="link.url"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >{{ link.label }}<UIcon name="i-lucide-arrow-up-right" class="size-3" /></a><span v-if="!airport.links?.length">Aucune source disponible</span>
+                      </div>
+                    </section>
+                    <section class="catalog-resolution">
+                      <h4>Résolution Polymarket</h4><div v-if="airport.resolutionSources?.length" class="resolution-links">
+                        <a
+                          v-for="source in airport.resolutionSources"
+                          :key="source.eventSlug || `${source.date}-${source.resolutionSource}`"
+                          :href="source.resolutionSource || undefined"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          :class="{ 'resolution-warning': source.matchesAirportCode === false }"
+                        ><span>{{ source.date || 'Date inconnue' }} · {{ source.resolutionProvider || 'Source inconnue' }}</span><strong>{{ source.resolutionAirportCode || '?' }}</strong><UIcon :name="source.matchesAirportCode === false ? 'i-lucide-triangle-alert' : 'i-lucide-arrow-up-right'" class="size-3" /></a>
+                      </div><p v-else>
+                        Aucune résolution déclarée
+                      </p>
+                    </section>
+                  </article>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </template>
+  <template v-else-if="dashboardLayout === 'dossiers'">
+    <main class="observatory">
+      <DossierNavigation />
+      <div class="workspace-content station-directory">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">
+              DOSSIERS / RÉSEAU D’OBSERVATION
+            </p><h1>Stations & sources</h1><p class="page-description">
+              {{ totalAirports }} stations référencées · tous les horaires sont locaux
+            </p>
+          </div>
+          <UInput
+            v-model="searchQuery"
+            placeholder="Ville ou code ICAO"
+            icon="i-lucide-search"
+            aria-label="Rechercher une station"
+            class="directory-search"
+          />
+        </div>
+        <div class="directory-filters">
+          <label><span>Unité</span><select v-model="filterUnit"><option value="">Toutes</option><option value="C">°C</option><option value="F">°F</option></select></label>
+          <label><span>Trading</span><select v-model="filterTrading"><option value="">Tous statuts</option><option value="tradable">Autorisé</option><option value="ignored">Ignoré</option></select></label>
+          <label><span>Région</span><select v-model="filterRegion"><option value="">Toutes régions</option><option value="Asia">Asie / Pacifique</option><option value="Europe">Europe</option><option value="America">Amérique</option><option value="Africa">Afrique</option><option value="Pacific">Pacifique (îles)</option></select></label>
+          <label><span>Trading ≤</span><input
+            v-model.number="filterTradingHourMax"
+            type="number"
+            min="0"
+            max="24"
+            aria-label="Heure trading maximale"
+          > h</label>
+          <label><span>Dust ≤</span><input
+            v-model.number="filterDustHourMax"
+            type="number"
+            min="0"
+            max="24"
+            aria-label="Heure dust maximale"
+          > h</label>
+          <fieldset class="source-filters">
+            <legend>Sources disponibles</legend><label><input v-model="filterHasWU" type="checkbox">WU</label><label><input v-model="filterHasWETHR" type="checkbox">WETHR</label><label><input v-model="filterHasMETAR" type="checkbox">METAR</label><label><input v-model="filterHasNWS" type="checkbox">NWS</label>
+          </fieldset>
+        </div>
+        <div class="directory-results">
+          <span>{{ activeFilteredLinks.length }} stations affichées</span><button v-if="hasActiveFilters" type="button" @click="resetFilters">
+            Réinitialiser les filtres
+          </button><span class="directory-key">Trading : début de prise de position · Dust : début dust</span>
+        </div>
+        <div v-if="loading" class="directory-loading">
+          Chargement des stations…
+        </div>
+        <UAlert
+          v-else-if="error"
+          color="error"
+          title="Connexion indisponible"
+          :description="error"
+        />
+        <div v-else-if="!activeFilteredLinks.length" class="directory-loading">
+          Aucune station ne correspond à cette recherche.
+        </div>
+        <div v-else class="timezone-directory">
+          <nav class="timezone-index" aria-label="Accéder à un fuseau">
+            <p class="index-label">
+              PAR FUSEAU HORAIRE
+            </p>
+            <a v-for="group in groupedByTimezone" :key="group.key" :href="`#timezone-${group.key.replaceAll(':', '-')}`"><strong>{{ group.offsetText }}</strong><span>{{ group.airports.length }} stations · {{ groupNowText(group) }}</span></a>
+          </nav>
+          <section
+            v-for="group in groupedByTimezone"
+            :id="`timezone-${group.key.replaceAll(':', '-')}`"
+            :key="group.key"
+            class="timezone-group"
+          >
+            <button
+              type="button"
+              class="timezone-heading"
+              :aria-expanded="!isTzCollapsed(group.key)"
+              @click="toggleTz(group.key)"
+            >
+              <UIcon :name="isTzCollapsed(group.key) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'" class="size-4" /><strong>{{ group.offsetText }}</strong><span class="timezone-clock">{{ groupNowText(group) }}</span><span>{{ group.airports.length }} stations</span><span class="timezone-names">{{ group.tzSummary }}</span>
+            </button>
+            <div v-if="!isTzCollapsed(group.key)" class="directory-records">
+              <article v-for="airport in group.airports" :key="airport.code" class="station-record">
+                <header class="record-identity">
+                  <span class="station-code">{{ airport.code }}</span><h2>{{ airport.city || 'Ville non renseignée' }}</h2><span class="record-timezone">{{ airport.airportData?.tz || airport.tz || 'Fuseau non renseigné' }}</span><span class="record-clock">{{ airportLocalNow(airport) }}<small>heure locale</small></span>
+                </header>
+                <div class="record-content">
+                  <dl class="record-metadata">
+                    <div><dt>Début trading</dt><dd>{{ timeLabel(airport.airportData?.tradingMinLocalHour, airport.airportData?.tradingMinLocalMinute) }}</dd></div><div><dt>Début dust</dt><dd>{{ timeLabel(airport.airportData?.dustMinLocalHour, airport.airportData?.dustMinLocalMinute) }}</dd></div><div><dt>Unité</dt><dd>{{ airport.airportData?.unit ? `°${airport.airportData.unit}` : '—' }}</dd></div><div>
+                      <dt>Trading</dt><dd :class="airport.airportData?.ignoreForTrading ? 'trading-ignored' : 'trading-allowed'">
+                        {{ airport.airportData?.ignoreForTrading ? 'Ignoré' : 'Autorisé' }}
+                      </dd>
+                    </div>
+                  </dl>
+                  <div class="record-reference-columns">
+                    <section class="record-weather-links">
+                      <h3>Sources météo</h3><div class="directory-links">
+                        <a
+                          v-for="link in airport.links"
+                          :key="`${airport.code}-${link.label}`"
+                          :href="link.url"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >{{ link.label }}<UIcon name="i-lucide-arrow-up-right" class="size-3" /></a><span v-if="!airport.links?.length">Aucune source référencée</span>
+                      </div>
+                    </section>
+                    <section class="record-resolution">
+                      <h3>Résolution Polymarket</h3><div v-if="airport.resolutionSources?.length" class="resolution-links">
+                        <a
+                          v-for="source in airport.resolutionSources"
+                          :key="source.eventSlug || `${source.date}-${source.resolutionSource}`"
+                          :href="source.resolutionSource || undefined"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          :class="{ 'resolution-warning': source.matchesAirportCode === false }"
+                        ><span>{{ source.date || 'Date inconnue' }} · {{ source.resolutionProvider || 'Source inconnue' }}</span><strong>{{ source.resolutionAirportCode || '?' }}</strong><UIcon :name="source.matchesAirportCode === false ? 'i-lucide-triangle-alert' : 'i-lucide-arrow-up-right'" class="size-3" /></a>
+                      </div><p v-else>
+                        Aucune résolution référencée
+                      </p>
+                    </section>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </template>
+  <template v-else>
+    <main class="observatory">
+      <header class="workspace-nav">
+        <NuxtLink to="/" class="wordmark">
+          <UIcon name="i-lucide-cloud-sun" class="size-6" />
+          <span>DUST<span class="wordmark-sub">OBSERVATOIRE MÉTÉO</span></span>
+        </NuxtLink>
+        <nav class="workspace-tabs" aria-label="Navigation principale">
+          <NuxtLink to="/">Tableau de veille</NuxtLink>
+          <NuxtLink to="/weather-links" aria-current="page">Stations & sources</NuxtLink>
+        </nav>
+        <span class="workspace-version">RÉPERTOIRE</span>
+      </header>
+      <div class="workspace-content station-directory journey-directory">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">
+              RÉSEAU D'OBSERVATION
+            </p>
+            <h1>Le tour des stations</h1>
+            <p class="page-description">
+              {{ totalAirports }} stations référencées · classées par heure locale
+            </p>
+          </div>
+          <UInput
+            v-model="searchQuery"
+            placeholder="Ville ou code ICAO"
+            icon="i-lucide-search"
+            aria-label="Rechercher une station"
+            class="directory-search"
+          />
+        </div>
+        <details class="journey-filter-drawer">
+          <summary><span><UIcon name="i-lucide-sliders-horizontal" class="size-4" />Affiner les stations</span><span>{{ hasActiveFilters ? 'Filtres actifs' : 'Unités, régions, horaires et sources' }}<UIcon name="i-lucide-chevron-down" class="size-4" /></span></summary>
+          <div class="directory-filters">
+            <label><span>Unité</span><select v-model="filterUnit"><option value="">Toutes</option><option value="C">°C</option><option value="F">°F</option></select></label>
+            <label><span>Trading</span><select v-model="filterTrading"><option value="">Tous statuts</option><option value="tradable">Autorisé</option><option value="ignored">Ignoré</option></select></label>
+            <label><span>Région</span><select v-model="filterRegion"><option value="">Toutes régions</option><option value="Asia">Asie / Pacifique</option><option value="Europe">Europe</option><option value="America">Amérique</option><option value="Africa">Afrique</option><option value="Pacific">Pacifique (îles)</option></select></label>
+            <label><span>Trading ≤</span><input
+              v-model.number="filterTradingHourMax"
+              type="number"
+              min="0"
+              max="24"
+              aria-label="Heure trading maximale"
+            > h</label>
+            <label><span>Dust ≤</span><input
+              v-model.number="filterDustHourMax"
+              type="number"
+              min="0"
+              max="24"
+              aria-label="Heure dust maximale"
+            > h</label>
+            <fieldset class="source-filters">
+              <legend>Sources disponibles</legend>
+              <label><input v-model="filterHasWU" type="checkbox">WU</label>
+              <label><input v-model="filterHasWETHR" type="checkbox">WETHR</label>
+              <label><input v-model="filterHasMETAR" type="checkbox">METAR</label>
+              <label><input v-model="filterHasNWS" type="checkbox">NWS</label>
+            </fieldset>
+          </div>
+        </details>
+        <div class="directory-results">
+          <span>{{ activeFilteredLinks.length }} stations affichées</span><button v-if="hasActiveFilters" type="button" @click="resetFilters">
+            Réinitialiser les filtres
+          </button><span class="directory-key">T : début trading · D : début dust · heures locales</span>
+        </div>
+        <div v-if="loading" class="directory-loading">
+          Chargement des stations…
+        </div>
+        <UAlert
+          v-else-if="error"
+          color="error"
+          title="Connexion indisponible"
+          :description="error"
+        />
+        <div v-else-if="!activeFilteredLinks.length" class="directory-loading">
+          Aucune station ne correspond à cette recherche.
+        </div>
+        <div v-else class="station-timeline">
+          <section v-for="group in groupedByTimezone" :key="group.key" class="timeline-group">
+            <aside class="timeline-clock-column">
+              <button type="button" :aria-expanded="!isTzCollapsed(group.key)" @click="toggleTz(group.key)">
+                <UIcon :name="isTzCollapsed(group.key) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'" class="size-4" /><strong>{{ group.offsetText }}</strong>
+              </button>
+              <span class="timeline-clock">{{ groupNowText(group) }}</span>
+              <span class="timeline-local-label">HEURE LOCALE</span>
+              <p>{{ group.airports.length }} stations</p>
+              <p class="timeline-tz-names">
+                {{ group.tzSummary }}
+              </p>
+            </aside>
+            <div v-if="!isTzCollapsed(group.key)" class="timeline-stations">
+              <article v-for="airport in group.airports" :key="airport.code" class="timeline-station">
+                <header><div><span class="station-code">{{ airport.code }}</span><h2>{{ airport.city || 'Ville non renseignée' }}</h2></div><span class="directory-time">{{ airportLocalNow(airport) }}</span></header>
+                <dl class="station-timing">
+                  <div><dt>Début trading</dt><dd>{{ timeLabel(airport.airportData?.tradingMinLocalHour, airport.airportData?.tradingMinLocalMinute) }}</dd></div><div><dt>Début dust</dt><dd>{{ timeLabel(airport.airportData?.dustMinLocalHour, airport.airportData?.dustMinLocalMinute) }}</dd></div><div><dt>Unité</dt><dd>{{ airport.airportData?.unit ? `°${airport.airportData.unit}` : '—' }}</dd></div><div>
+                    <dt>Trading</dt><dd :class="airport.airportData?.ignoreForTrading ? 'trading-ignored' : 'trading-allowed'">
+                      {{ airport.airportData?.ignoreForTrading ? 'Ignoré' : 'Autorisé' }}
+                    </dd>
+                  </div>
+                </dl>
+                <div class="timeline-station-sources">
+                  <h3>Sources météo</h3><div class="directory-links">
+                    <a
+                      v-for="link in airport.links"
+                      :key="`${airport.code}-${link.label}`"
+                      :href="link.url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >{{ link.label }}<UIcon name="i-lucide-arrow-up-right" class="size-3" /></a><span v-if="!airport.links?.length">Aucune source disponible</span>
+                  </div>
+                </div>
+                <div class="timeline-resolution">
+                  <h3>Résolution Polymarket</h3><div v-if="airport.resolutionSources?.length" class="resolution-links">
+                    <a
+                      v-for="source in airport.resolutionSources"
+                      :key="source.eventSlug || `${source.date}-${source.resolutionSource}`"
+                      :href="source.resolutionSource || undefined"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      :class="{ 'resolution-warning': source.matchesAirportCode === false }"
+                    ><span>{{ source.date || 'Date inconnue' }} · {{ source.resolutionProvider || 'Source inconnue' }}</span><strong>{{ source.resolutionAirportCode || '?' }}</strong><UIcon :name="source.matchesAirportCode === false ? 'i-lucide-triangle-alert' : 'i-lucide-arrow-up-right'" class="size-3" /></a>
+                  </div><p v-else>
+                    Source de résolution non renseignée
+                  </p>
+                </div>
+              </article>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </template>
 </template>

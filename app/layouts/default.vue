@@ -1,5 +1,14 @@
+<script setup lang="ts">
+const { dashboardLayout } = useDashboardLayout()
+</script>
+
 <template>
-  <div class="weather-workspace">
-    <slot />
+  <div>
+    <LayoutSwitcher />
+    <div :data-layout="dashboardLayout">
+      <div class="weather-workspace">
+        <slot />
+      </div>
+    </div>
   </div>
 </template>
