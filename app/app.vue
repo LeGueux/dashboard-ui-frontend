@@ -19,15 +19,30 @@ useHead({
   }
 })
 
-const title = 'Dust Dashboard'
-const description = 'A dashboard to monitor your dust markets and receive notifications when they are active.'
+const title = 'Dust — Veille météo & marchés'
+const description = 'Suivez la météo, les prévisions et les marchés de températures Polymarket. Comparez les villes, les relevés et les carnets d’ordres.'
+const siteUrl = 'https://dust-dashboard.vercel.app'
+const socialImage = `${siteUrl}/social/dust-weather-markets-v1.png`
+const route = useRoute()
 
 useSeoMeta({
   title,
   description,
   ogTitle: title,
   ogDescription: description,
-  ogImage: 'https://ui.nuxt.com/assets/templates/nuxt/dashboard-light.png',
+  ogType: 'website',
+  ogSiteName: 'Dust',
+  ogLocale: 'fr_FR',
+  ogUrl: () => `${siteUrl}${route.path}`,
+  ogImage: socialImage,
+  ogImageType: 'image/png',
+  ogImageWidth: 1731,
+  ogImageHeight: 909,
+  ogImageAlt: 'Dust, veille météo et marchés : villes, observations et prévisions de températures.',
+  twitterTitle: title,
+  twitterDescription: description,
+  twitterImage: socialImage,
+  twitterImageAlt: 'Dust — Veille météo & marchés',
   twitterCard: 'summary_large_image'
 })
 </script>
