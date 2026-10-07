@@ -2,6 +2,14 @@
 
 Frontend Nuxt 4 du dashboard Polymarket Dust. L'application affiche les marches dust envoyes par l'ingest backend, expose le wiki des liens meteo et quelques pages de configuration issues du dashboard.
 
+## Dispositions du dashboard
+
+Le dashboard et le répertoire des stations proposent quatre dispositions dans le même thème clair blanc et bleu : **Veille météo**, **Comparatif**, **Dossiers** et **Parcours**. Le sélecteur reste accessible en haut de page, avec des boutons sur PC et une liste sur téléphone.
+
+Le choix est mémorisé sur le navigateur et appliqué dès le rendu serveur. Changer de disposition conserve les filtres, les conversions et les villes repliées du tableau, ainsi que la recherche et les filtres du répertoire. Toutes les dispositions utilisent les mêmes données et calculs du backend configuré.
+
+Voir [LAYOUTS.md](LAYOUTS.md) pour les différences entre les dispositions et leur organisation dans le code.
+
 ## Prerequis
 
 - Node.js 24.11 ou plus recent

@@ -8,6 +8,6 @@ Le wiki devient un annuaire de stations en tableau, regroupé par fuseau, avec h
 
 Composables, données, tri et calculs existants conservés. Fonctionnalités conservées : filtre 99.9¢, aide et conversions, replis villes/fuseaux, sources, courbes et survol/focus, modèles/relevés/signaux, asks/bids/spreads/rendements, recherche et tous les filtres du wiki. Aucune fixture et aucune modification backend.
 
-Validation : préparation Nuxt et vérification TypeScript réussies via les exécutables Node équivalents aux scripts pnpm. Avertissement de dépendance partagée : plugin `vue-router/volar/sfc-route-blocks` introuvable, sans erreur TypeScript ni code de sortie en échec. Lint complet réussi après correction automatique du formatage. Installation offline impossible faute de métadonnées, réseau DNS inaccessible ; dépendances du front principal réutilisées par jonction créée par l'agent coordinateur. Cache Vite isolé dans `.nuxt/vite-cache` pour les previews concurrentes.
+Veille météo est la disposition initiale. Le sélecteur permet aussi de choisir Comparatif, Dossiers ou Parcours, sur les deux pages et sans changer le thème ni les données. Voir [LAYOUTS.md](LAYOUTS.md) pour les caractéristiques de chaque disposition.
 
-Contrôle visuel et validation dans le navigateur pilotés par l'agent coordinateur sur le port 3013. Production et branche principale inchangées.
+Les styles sont limités à leur disposition par l'attribut `data-layout`. Les calculs, filtres et flux restent partagés. Le cookie de préférence permet de conserver le choix entre les pages et d'appliquer la disposition dès le rendu serveur.
