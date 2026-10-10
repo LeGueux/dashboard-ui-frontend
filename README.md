@@ -4,7 +4,7 @@ Frontend Nuxt 4 du dashboard Polymarket Dust. L'application affiche les marches 
 
 ## Dispositions du dashboard
 
-Le dashboard et le répertoire des stations proposent quatre dispositions dans le même thème clair blanc et bleu : **Veille météo**, **Comparatif**, **Dossiers** et **Parcours**. Le sélecteur reste accessible en haut de page, avec des boutons sur PC et une liste sur téléphone.
+Le dashboard et le répertoire des stations proposent deux dispositions dans le même thème clair blanc et bleu : **Veille météo** et **Dossiers**. Le sélecteur reste accessible en haut de page, avec des boutons sur PC et une liste sur téléphone.
 
 Le choix est mémorisé sur le navigateur et appliqué dès le rendu serveur. Changer de disposition conserve les filtres, les conversions et les villes repliées du tableau, ainsi que la recherche et les filtres du répertoire. Toutes les dispositions utilisent les mêmes données et calculs du backend configuré.
 

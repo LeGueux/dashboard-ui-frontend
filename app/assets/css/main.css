@@ -1,9 +1,7 @@
 @import "tailwindcss" theme(static);
 @import "@nuxt/ui";
 @import "./layouts/weather.css";
-@import "./layouts/comparatif.css";
 @import "./layouts/dossiers.css";
-@import "./layouts/parcours.css";
 
 @theme static {
   --font-sans: 'Public Sans', 'Segoe UI', sans-serif;
@@ -28,14 +26,6 @@ body { margin: 0; font-family: var(--font-sans); font-size: 14px; color: #243548
 }
 @media (max-width: 820px) {
   [data-layout="dossiers"] .station-overview, [data-layout="dossiers"] .timezone-index { top: var(--layout-toolbar-height); }
-}
-[data-layout="comparatif"] .matrix-header { top: var(--layout-toolbar-height); }
-[data-layout="comparatif"] .catalog-sidebar { top: calc(18px + var(--layout-toolbar-height)); }
-[data-layout="parcours"] .journey-navigation { top: var(--layout-toolbar-height); }
-[data-layout="parcours"] .timeline-clock-column { top: calc(20px + var(--layout-toolbar-height)); }
-[data-layout="parcours"] .journey-section, [data-layout="parcours"] .journey-weather-panel, [data-layout="parcours"] .journey-market-panel { scroll-margin-top: 110px; }
-@media (max-width: 640px) {
-  [data-layout="parcours"] .journey-section, [data-layout="parcours"] .journey-weather-panel, [data-layout="parcours"] .journey-market-panel { scroll-margin-top: 145px; }
 }
 @media (max-width: 700px) {
   .layout-switcher { padding: 0 14px; gap: 12px; }

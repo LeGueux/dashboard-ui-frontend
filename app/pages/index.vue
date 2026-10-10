@@ -4,9 +4,7 @@ const runtime = useRuntimeConfig()
 const { dashboardLayout } = useDashboardLayout()
 const pageTitle = computed(() => ({
   weather: 'Veille des températures',
-  comparatif: 'Comparatif des villes',
-  dossiers: 'Dossiers de veille',
-  parcours: 'De la météo aux marchés'
+  dossiers: 'Dossiers de veille'
 })[dashboardLayout.value])
 const airportCount = computed(() => new Set(markets.value.map(market => market.airport).filter(Boolean)).size)
 const statusLabel = computed(() => {
