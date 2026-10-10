@@ -59,7 +59,6 @@
 [data-layout="weather"] .station-markets { padding-left: 24px; border-left: 1px solid #dbe5ee; min-width: 0; }
 [data-layout="weather"] .market-book { padding: 10px 0 12px; border-bottom: 1px solid #dce5eb; background: #fff; }
 [data-layout="weather"] .market-book:first-of-type { padding-top: 0; }[data-layout="weather"] .market-book:last-child { border-bottom: 0; padding-bottom: 0; }
-[data-layout="weather"] .market-book > div:first-child > div:first-child > span { background: transparent; padding-left: 0; font-size: 9px; font-weight: 750; width: 28px; }
 [data-layout="weather"] .market-book > div:first-child h4 { font-size: 13px; color: #314d63; }
 [data-layout="weather"] .market-book > div:first-child > div:last-child > span { background: transparent; font-size: 17px; letter-spacing: -.035em; color: #314d63; padding-right: 0; }
 [data-layout="weather"] .market-book > div:nth-child(2) { border-color: #dce5eb; border-radius: 0; }

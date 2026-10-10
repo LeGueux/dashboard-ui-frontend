@@ -10,6 +10,10 @@
 :root { --ui-primary: #2465a4; --ui-bg: #fff; --ui-text: #243548; --layout-toolbar-height: 56px; color-scheme: light; }
 html { scroll-behavior: smooth; scroll-padding-top: 72px; background: #eef2f5; }
 body { margin: 0; font-family: var(--font-sans); font-size: 14px; color: #243548; }
+/* L'issue du marché reste lisible dans les deux dispositions, même sur téléphone. */
+.market-book .market-outcome { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; min-width: 58px; min-height: 30px; padding: 5px 10px; border-radius: 3px; color: #fff; font-size: 14px; font-weight: 800; line-height: 20px; letter-spacing: .06em; text-transform: uppercase; }
+.market-yes .market-outcome { background: #0f766e; }
+.market-no .market-outcome { background: #be123c; }
 .layout-switcher { height: var(--layout-toolbar-height); padding: 0 24px; display: flex; align-items: center; gap: 18px; background: #f8fbfe; border-bottom: 1px solid #cbd9e6; position: sticky; top: 0; z-index: 60; }
 .layout-switcher-label { font-size: 11px; font-weight: 650; color: #526e86; }
 .layout-switcher-buttons { display: flex; gap: 4px; }

@@ -1544,12 +1544,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
               >
                 <div class="flex items-center justify-between gap-3">
                   <div class="flex min-w-0 items-center gap-2">
-                    <span
-                      class="rounded-sm px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
-                      :class="isYes(market.outcome)
-                        ? 'bg-emerald-400/15 text-emerald-700'
-                        : 'bg-rose-400/15 text-rose-700'"
-                    >{{ market.outcome || '—' }}</span>
+                    <span class="market-outcome">{{ market.outcome || '—' }}</span>
                     <h4 class="truncate text-sm font-semibold text-slate-900">
                       {{ market.groupItemTitle || 'Seuil' }}
                     </h4>
@@ -2271,12 +2266,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
               >
                 <div class="flex items-center justify-between gap-3">
                   <div class="flex min-w-0 items-center gap-2">
-                    <span
-                      class="rounded-sm px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
-                      :class="isYes(market.outcome)
-                        ? 'bg-emerald-400/15 text-emerald-700'
-                        : 'bg-rose-400/15 text-rose-700'"
-                    >{{ market.outcome || '—' }}</span>
+                    <span class="market-outcome">{{ market.outcome || '—' }}</span>
                     <h4 class="truncate text-sm font-semibold text-slate-900">
                       {{ market.groupItemTitle || 'Seuil' }}
                     </h4>
