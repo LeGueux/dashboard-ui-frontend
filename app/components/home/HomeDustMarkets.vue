@@ -2,7 +2,7 @@
 // Les deux présentations partagent les filtres, les calculs et le flux de données.
 
 import type { DropdownMenuItem } from '@nuxt/ui'
-import type { WeatherObservation, WeatherSnapshot, WeatherTradingSignal } from '~/composables/useDustMarkets'
+import type { WeatherObservation, WeatherSnapshot, WeatherMarketForecast } from '~/composables/useDustMarkets'
 
 const { dashboardLayout } = useDashboardLayout()
 
@@ -54,12 +54,12 @@ const props = withDefaults(defineProps<{
   markets?: DustMarket[]
   loading?: boolean
   weatherSnapshots?: Record<string, WeatherSnapshot>
-  weatherTradingSignals?: WeatherTradingSignal[]
+  weatherMarketForecasts?: WeatherMarketForecast[]
 }>(), {
   markets: () => [],
   loading: false,
   weatherSnapshots: () => ({}),
-  weatherTradingSignals: () => []
+  weatherMarketForecasts: () => []
 })
 
 const toast = useToast()
@@ -331,12 +331,10 @@ function weatherForGroup(group: CityGroup) {
   return props.weatherSnapshots[group.airport] || null
 }
 
-function signalForGroup(group: CityGroup) {
+function forecastForGroup(group: CityGroup) {
   const marketIds = new Set(group.markets.map(market => String(market.id || market.slug || '')))
-  const rank: Record<WeatherTradingSignal['status'], number> = { risk: 4, watch: 3, safe: 2, unknown: 1 }
-  return props.weatherTradingSignals
-    .filter(signal => signal.airport === group.airport && marketIds.has(String(signal.marketId || '')))
-    .sort((a, b) => rank[b.status] - rank[a.status] || b.confidence - a.confidence)[0] || null
+  return props.weatherMarketForecasts
+    .find(forecast => forecast.airport === group.airport && marketIds.has(String(forecast.marketId || ''))) || null
 }
 
 function weatherTemperature(value: number | null | undefined, unit: 'C' | 'F' = 'C') {
@@ -391,15 +389,8 @@ function weatherFreshness(snapshot: WeatherSnapshot) {
   return minutes < 1 ? 'a l\'instant' : `il y a ${minutes} min`
 }
 
-function signalTone(status: WeatherTradingSignal['status']) {
-  if (status === 'safe') return 'border-emerald-400/30 bg-emerald-400/10 text-emerald-700'
-  if (status === 'watch') return 'border-amber-400/30 bg-amber-400/10 text-amber-700'
-  if (status === 'risk') return 'border-rose-400/30 bg-rose-400/10 text-rose-700'
-  return 'border-slate-400/30 bg-slate-400/10 text-slate-600'
-}
-
-function weatherSignalLabel(signal: WeatherTradingSignal) {
-  return signal.reason.replace(/\s*·\s*fallback Open-Meteo/i, '')
+function weatherForecastLabel(forecast: WeatherMarketForecast) {
+  return forecast.reason.replace(/\s*·\s*fallback Open-Meteo/i, '')
 }
 
 function hasMetarObservations(snapshot: WeatherSnapshot) {
@@ -1249,14 +1240,6 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   >
                     {{ weatherFreshness(weatherForGroup(group)!) }}
                   </span>
-                  <span
-                    v-if="signalForGroup(group)"
-                    class="max-w-full rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold"
-                    :class="signalTone(signalForGroup(group)!.status)"
-                    :title="signalForGroup(group)!.reason"
-                  >
-                    {{ signalForGroup(group)!.status.toUpperCase() }} {{ signalForGroup(group)!.confidence }}%
-                  </span>
                 </div>
               </div>
 
@@ -1498,7 +1481,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                       <span class="inline-flex items-center gap-1"><span class="w-3 border-t border-dashed border-slate-100" /> Moyenne modèles</span>
                     </span>
                   </div>
-                  <span v-if="signalForGroup(group)" class="min-w-0 truncate" :title="signalForGroup(group)!.reason">{{ weatherSignalLabel(signalForGroup(group)!) }}</span>
+                  <span v-if="forecastForGroup(group)" class="min-w-0 truncate" :title="forecastForGroup(group)!.reason">{{ weatherForecastLabel(forecastForGroup(group)!) }}</span>
                 </div>
               </div>
 
@@ -1984,14 +1967,6 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   >
                     {{ weatherFreshness(weatherForGroup(group)!) }}
                   </span>
-                  <span
-                    v-if="signalForGroup(group)"
-                    class="max-w-full rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold"
-                    :class="signalTone(signalForGroup(group)!.status)"
-                    :title="signalForGroup(group)!.reason"
-                  >
-                    {{ signalForGroup(group)!.status.toUpperCase() }} {{ signalForGroup(group)!.confidence }}%
-                  </span>
                 </div>
               </div>
 
@@ -2233,7 +2208,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                       <span class="inline-flex items-center gap-1"><span class="w-3 border-t border-dashed border-slate-100" /> Moyenne modèles</span>
                     </span>
                   </div>
-                  <span v-if="signalForGroup(group)" class="min-w-0 truncate" :title="signalForGroup(group)!.reason">{{ weatherSignalLabel(signalForGroup(group)!) }}</span>
+                  <span v-if="forecastForGroup(group)" class="min-w-0 truncate" :title="forecastForGroup(group)!.reason">{{ weatherForecastLabel(forecastForGroup(group)!) }}</span>
                 </div>
               </div>
 

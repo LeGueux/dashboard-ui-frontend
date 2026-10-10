@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { markets, weatherSnapshots, weatherTradingSignals, loading, status, lastSyncAt, error } = useDustMarkets()
+const { markets, weatherSnapshots, weatherMarketForecasts, loading, status, lastSyncAt, error } = useDustMarkets()
 const runtime = useRuntimeConfig()
 const { dashboardLayout } = useDashboardLayout()
 const pageTitle = computed(() => ({
@@ -48,7 +48,7 @@ const statusLabel = computed(() => {
       <HomeDustMarkets
         :markets="markets"
         :weather-snapshots="weatherSnapshots"
-        :weather-trading-signals="weatherTradingSignals"
+        :weather-market-forecasts="weatherMarketForecasts"
         :loading="loading"
       />
     </div>

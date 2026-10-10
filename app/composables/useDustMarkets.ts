@@ -92,14 +92,13 @@ export interface WeatherSnapshot {
   sparkline?: Array<{ timeLocal: string, temperature: number, kind?: 'observed' | 'forecast' }>
 }
 
-export interface WeatherTradingSignal {
+export interface WeatherMarketForecast {
   marketId: string | number | null
   airport: string
   threshold: number | null
   unit: 'C' | 'F'
   outcome: 'Yes' | 'No' | string | null
-  status: 'safe' | 'watch' | 'risk' | 'unknown'
-  confidence: number
+  forecastMax: number | null
   margin: number | null
   reason: string
 }
@@ -111,7 +110,7 @@ export interface DustFeedPayload {
   count?: number
   markets?: DustMarket[]
   weatherSnapshots?: Record<string, WeatherSnapshot>
-  weatherTradingSignals?: WeatherTradingSignal[]
+  weatherMarketForecasts?: WeatherMarketForecast[]
   summary?: Record<string, unknown>
 }
 
@@ -139,7 +138,7 @@ export function useDustMarkets() {
 
   const markets = ref<DustMarket[]>([])
   const weatherSnapshots = ref<Record<string, WeatherSnapshot>>({})
-  const weatherTradingSignals = ref<WeatherTradingSignal[]>([])
+  const weatherMarketForecasts = ref<WeatherMarketForecast[]>([])
   const loading = ref(true)
   const error = ref<string | null>(null)
   const lastUpdated = ref<string | null>(null)
@@ -170,7 +169,7 @@ export function useDustMarkets() {
       if (stateRes.status === 204) {
         markets.value = []
         weatherSnapshots.value = {}
-        weatherTradingSignals.value = []
+        weatherMarketForecasts.value = []
         status.value = 'idle'
         error.value = 'No dust market data available yet.'
         hasLoadedOnce.value = true
@@ -187,7 +186,7 @@ export function useDustMarkets() {
 
       markets.value = nextMarkets
       weatherSnapshots.value = payload?.weatherSnapshots && typeof payload.weatherSnapshots === 'object' ? payload.weatherSnapshots : {}
-      weatherTradingSignals.value = Array.isArray(payload?.weatherTradingSignals) ? payload.weatherTradingSignals : []
+      weatherMarketForecasts.value = Array.isArray(payload?.weatherMarketForecasts) ? payload.weatherMarketForecasts : []
       lastUpdated.value = payload.generatedAt || payload.summary?.generatedAtLocale as string || null
       source.value = payload.source || 'Ingest backend'
       lastSyncAt.value = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -200,7 +199,7 @@ export function useDustMarkets() {
       status.value = 'error'
       markets.value = []
       weatherSnapshots.value = {}
-      weatherTradingSignals.value = []
+      weatherMarketForecasts.value = []
     } finally {
       loading.value = false
     }
@@ -240,7 +239,7 @@ export function useDustMarkets() {
 
           markets.value = nextMarkets
           weatherSnapshots.value = payload?.weatherSnapshots && typeof payload.weatherSnapshots === 'object' ? payload.weatherSnapshots : {}
-          weatherTradingSignals.value = Array.isArray(payload?.weatherTradingSignals) ? payload.weatherTradingSignals : []
+          weatherMarketForecasts.value = Array.isArray(payload?.weatherMarketForecasts) ? payload.weatherMarketForecasts : []
           lastUpdated.value = payload.generatedAt || payload.summary?.generatedAtLocale as string || null
           source.value = payload.source || 'Ingest backend'
           lastSyncAt.value = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -269,7 +268,7 @@ export function useDustMarkets() {
   return {
     markets,
     weatherSnapshots,
-    weatherTradingSignals,
+    weatherMarketForecasts,
     loading,
     error,
     lastUpdated,
