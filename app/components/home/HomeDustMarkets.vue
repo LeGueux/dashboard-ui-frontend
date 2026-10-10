@@ -407,6 +407,9 @@ function hasMetarObservations(snapshot: WeatherSnapshot) {
 }
 
 function dailyMaximumTemperature(snapshot: WeatherSnapshot) {
+  const dayStart = weatherDayStart(snapshot)
+  if (dayStart === null) return null
+
   const observations = (snapshot.recentObservations || [])
     .map(observation => ({
       ...observation,
@@ -416,10 +419,8 @@ function dailyMaximumTemperature(snapshot: WeatherSnapshot) {
 
   if (!observations.length) return null
 
-  const latestLocalMinute = Math.max(...observations.map(observation => observation.localMinute!))
-  const latestDay = new Date(latestLocalMinute * 60_000).toISOString().slice(0, 10)
   const temperatures = observations
-    .filter(observation => new Date(observation.localMinute! * 60_000).toISOString().slice(0, 10) === latestDay)
+    .filter(observation => observation.localMinute! >= dayStart && observation.localMinute! < dayStart + 24 * 60)
     .map(observation => Number(observation.temperature))
 
   return temperatures.length ? Math.max(...temperatures) : null
@@ -454,6 +455,11 @@ function weatherAxisLabel(localMinute: number) {
   return `${String(date.getUTCHours()).padStart(2, '0')}:00`
 }
 
+function weatherDayStart(snapshot: WeatherSnapshot) {
+  const localMinute = weatherLocalMinute(snapshot.fetchedAt, snapshot.tz)
+  return localMinute === null ? null : Math.floor(localMinute / (24 * 60)) * (24 * 60)
+}
+
 const compactWeatherChart = useMediaQuery('(max-width: 767px)')
 
 function sparklinePaths(snapshot: WeatherSnapshot) {
@@ -467,7 +473,13 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   const basePoints: ChartPoint[] = (snapshot.sparkline || [])
     .filter(point => Number.isFinite(point.temperature))
     .map(point => ({ ...point, temperature: Number(point.temperature) }))
-  const observations = basePoints.filter(point => point.kind === 'observed')
+  const dayStart = weatherDayStart(snapshot)
+  // En début de journée, le flux peut aussi contenir des relevés de la veille pour le tableau METAR.
+  const observations = basePoints.filter((point) => {
+    if (point.kind !== 'observed' || dayStart === null) return false
+    const minute = weatherLocalMinute(point.timeLocal, snapshot.tz)
+    return minute !== null && minute >= dayStart && minute < dayStart + 24 * 60
+  }).sort((a, b) => weatherLocalMinute(a.timeLocal, snapshot.tz)! - weatherLocalMinute(b.timeLocal, snapshot.tz)!)
   const fallbackForecast = basePoints.filter(point => point.kind === 'forecast')
   const primaryRows: ChartPoint[] = (snapshot.hourly?.length ? snapshot.hourly.slice(0, 12) : fallbackForecast.slice(0, 12))
     .filter(point => Number.isFinite(point.temperature))
