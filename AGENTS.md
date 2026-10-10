@@ -31,6 +31,7 @@ Nuxt 4 dashboard frontend for displaying bot data.
 - Preserve SSR/client separation in Nuxt and do not force a browser-only solution where server-side fetch is appropriate.
 - Use `publicConfig.ingestBackendUrl` or `NUXT_PUBLIC_INGEST_BACKEND_URL` for backend URL configuration.
 - Follow existing TypeScript and ESLint conventions.
+- Before every commit, increment the application version in `package.json` and include the version change in that same commit, including documentation-only changes. Use a patch increment by default, unless the user requests another version. `runtimeConfig.public.appVersion` reads this value automatically; do not hardcode a separate version in the UI.
 
 ## References
 
