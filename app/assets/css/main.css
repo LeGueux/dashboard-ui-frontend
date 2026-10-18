@@ -27,7 +27,7 @@ body { margin: 0; font-family: var(--font-sans); font-size: 14px; color: #243548
 /* Les éléments fixes restent sous le sélecteur, quelle que soit la disposition. */
 @media (min-width: 821px) {
   [data-layout="dossiers"] .workspace-nav { top: var(--layout-toolbar-height); }
-  [data-layout="dossiers"] .station-overview, [data-layout="dossiers"] .timezone-index { top: calc(233px + var(--layout-toolbar-height)); max-height: calc(100vh - 350px); }
+  [data-layout="dossiers"] .station-overview, [data-layout="dossiers"] .timezone-index { top: calc(233px + var(--layout-toolbar-height)); max-height: calc(100vh - 294px - var(--layout-toolbar-height)); }
 }
 @media (max-width: 820px) {
   [data-layout="dossiers"] .station-overview, [data-layout="dossiers"] .timezone-index { top: var(--layout-toolbar-height); }

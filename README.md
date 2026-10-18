@@ -4,9 +4,9 @@ Frontend Nuxt 4 du dashboard Polymarket Dust. L'application affiche les marches 
 
 ## Dispositions du dashboard
 
-Le dashboard et le répertoire des stations proposent deux dispositions dans le même thème clair blanc et bleu : **Veille météo** et **Dossiers**. Le sélecteur reste accessible en haut de page, avec des boutons sur PC et une liste sur téléphone.
+La page des marchés propose deux dispositions dans le même thème clair blanc et bleu : **Veille météo** et **Dossiers**. Le sélecteur reste accessible en haut de cette page, avec des boutons sur PC et une liste sur téléphone. Le répertoire **Stations & sources** utilise uniquement la présentation Dossiers, sans sélecteur.
 
-Le choix est mémorisé sur le navigateur et appliqué dès le rendu serveur. Changer de disposition conserve les filtres, les conversions et les villes repliées du tableau, ainsi que la recherche et les filtres du répertoire. Toutes les dispositions utilisent les mêmes données et calculs du backend configuré.
+Le choix des marchés est mémorisé sur le navigateur et appliqué dès le rendu serveur. Changer de disposition conserve les filtres, les conversions et les villes repliées du tableau. Visiter le répertoire ne modifie pas ce choix : il est retrouvé au retour sur les marchés. Toutes les présentations utilisent les données du backend configuré.
 
 Voir [LAYOUTS.md](LAYOUTS.md) pour les différences entre les dispositions et leur organisation dans le code.
 
