@@ -83,11 +83,11 @@ function showWeatherPoint(airport: string, point: Omit<WeatherHoverPoint, 'airpo
 }
 
 function weatherTooltipX(point: WeatherHoverPoint) {
-  return point.x > (point.chartWidth || 320) * 0.6 ? point.x - 156 : point.x + 8
+  return Math.max(6, Math.min(point.x + 10, (point.chartWidth || 420) - 214))
 }
 
 function weatherTooltipY(point: WeatherHoverPoint) {
-  return Math.max(8, Math.min(112, point.y - 42))
+  return Math.max(36, Math.min(210, point.y - 64))
 }
 
 function formatCents(value?: number | string | null) {
@@ -452,6 +452,49 @@ function weatherDayStart(snapshot: WeatherSnapshot) {
 }
 
 const compactWeatherChart = useMediaQuery('(max-width: 767px)')
+const weatherChartWidths = ref<Record<string, number>>({})
+const weatherChartElements = new Map<string, SVGSVGElement>()
+let weatherChartResizeObserver: ResizeObserver | null = null
+
+function registerWeatherChart(airport: string, element: unknown) {
+  const previous = weatherChartElements.get(airport)
+  if (previous === element) return
+  if (previous) weatherChartResizeObserver?.unobserve(previous)
+  weatherChartElements.delete(airport)
+  if (import.meta.client && element instanceof SVGSVGElement) {
+    weatherChartElements.set(airport, element)
+    weatherChartResizeObserver?.observe(element)
+  }
+}
+
+onMounted(() => {
+  // Le repère suit la largeur réelle : les caractères du SVG ne sont plus réduits avec le dessin.
+  weatherChartResizeObserver = new ResizeObserver((entries) => {
+    const widths = { ...weatherChartWidths.value }
+    let changed = false
+    for (const entry of entries) {
+      const airport = (entry.target as SVGSVGElement).dataset.airport
+      const width = Math.round(entry.contentRect.width)
+      if (airport && width > 0 && widths[airport] !== width) {
+        widths[airport] = width
+        changed = true
+      }
+    }
+    if (changed) weatherChartWidths.value = widths
+  })
+  for (const element of weatherChartElements.values()) weatherChartResizeObserver.observe(element)
+})
+
+onBeforeUnmount(() => weatherChartResizeObserver?.disconnect())
+
+function weatherModelStyle(index: number) {
+  // Les motifs restent distincts en niveaux de gris ; les teintes pâles du flux sont remplacées.
+  return [
+    { color: '#9a4f00', dash: '10 5', legend: 'repeating-linear-gradient(to right, #9a4f00 0 10px, transparent 10px 15px)' },
+    { color: '#006b57', dash: '2 5', legend: 'repeating-linear-gradient(to right, #006b57 0 2px, transparent 2px 7px)' },
+    { color: '#63509a', dash: '10 4 2 4', legend: 'repeating-linear-gradient(to right, #63509a 0 10px, transparent 10px 14px, #63509a 14px 16px, transparent 16px 20px)' }
+  ][index % 3]!
+}
 
 function weatherBets(snapshot: WeatherSnapshot) {
   const unique = new Map<string, { title: string, outcome: string, temperatures: number[] }>()
@@ -485,12 +528,12 @@ function betTemperatureGap(temperatures: number[], reference: number | null | un
 
 function sparklinePaths(snapshot: WeatherSnapshot) {
   const bets = weatherBets(snapshot)
-  const chartWidth = compactWeatherChart.value ? 320 : 520
-  const chartLeft = compactWeatherChart.value ? 34 : 42
-  const chartRight = chartWidth - 10
+  const chartWidth = weatherChartWidths.value[snapshot.airport] || (compactWeatherChart.value ? 320 : 420)
+  const chartLeft = 48
+  const chartRight = chartWidth - 14
   const plotWidth = chartRight - chartLeft
-  const chartTop = 25
-  const chartBottom = 135
+  const chartTop = 36
+  const chartBottom = 268
   type ChartPoint = { timeLocal: string, temperature: number, kind?: 'observed' | 'forecast', label?: string, color?: string, modelId?: string, primary?: boolean }
   const basePoints: ChartPoint[] = (snapshot.sparkline || [])
     .filter(point => Number.isFinite(point.temperature))
@@ -505,13 +548,13 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   const fallbackForecast = basePoints.filter(point => point.kind === 'forecast')
   const primaryRows: ChartPoint[] = (snapshot.hourly?.length ? snapshot.hourly.slice(0, 12) : fallbackForecast.slice(0, 12))
     .filter(point => Number.isFinite(point.temperature))
-    .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: snapshot.sourceLabel, color: '#7e22ce', primary: true }))
-  const modelRows: ChartPoint[] = (snapshot.forecastModels || []).flatMap(model => model.hourly.slice(0, 12)
+    .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: snapshot.sourceLabel, color: '#005a9c', primary: true }))
+  const modelRows: ChartPoint[] = (snapshot.forecastModels || []).flatMap((model, index) => model.hourly.slice(0, 12)
     .filter(point => Number.isFinite(point.temperature))
-    .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: model.label, color: model.color, modelId: model.id })))
+    .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: model.label, color: weatherModelStyle(index).color, modelId: model.id })))
   const forecastRows = [...primaryRows, ...modelRows]
   const points = [...observations, ...(forecastRows.length ? forecastRows : fallbackForecast)]
-  const empty = { observed: '', forecast: '', primaryForecast: '', spread: '', modelPaths: [], points: [], observedPoints: [], forecastPoints: [], primaryPoints: [], axisPoints: [], yAxisPoints: [], betLines: [] as { temperature: number, y: number, label: string }[], bets, primaryMax: null as number | null, boundaryX: null, peakPoint: null, min: null, middle: null, max: null, consensusMax: null, spreadMax: null, chartWidth, chartLeft, chartRight, labelX: chartLeft - 5 }
+  const empty = { observed: '', forecast: '', primaryForecast: '', spread: '', modelPaths: [], points: [], observedPoints: [], forecastPoints: [], primaryPoints: [], axisPoints: [], yAxisPoints: [], betLines: [] as { temperature: number, y: number, labelY: number, label: string }[], bets, primaryMax: null as number | null, boundaryX: null, peakPoint: null, min: null, middle: null, max: null, consensusMax: null, spreadMax: null, chartWidth, chartLeft, chartRight, labelX: chartLeft - 5 }
   if (points.length < 2) return empty
   // Les seuils participent à l'échelle pour qu'un bet au-dessus du maximum reste visible.
   const values = [...points.map(point => point.temperature), ...bets.flatMap(bet => bet.temperatures)]
@@ -534,7 +577,14 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   for (const bet of bets) {
     for (const temperature of bet.temperatures) thresholds.set(temperature, [...(thresholds.get(temperature) || []), bet.id])
   }
-  const betLines = [...thresholds].map(([temperature, ids]) => ({ temperature, y: scaleTemperatureY(temperature), label: ids.join(' / ') }))
+  let previousLabelY = chartTop - 20
+  const betLines = [...thresholds].sort(([a], [b]) => b - a).map(([temperature, ids], index) => {
+    const y = scaleTemperatureY(temperature)
+    // Les libellés gardent un espacement lisible même si deux bets sont très proches.
+    const labelY = Math.max(Math.min(y - 6, chartBottom - 6 - (thresholds.size - index - 1) * 20), previousLabelY + 20)
+    previousLabelY = labelY
+    return { temperature, y, labelY, label: ids.join(' / ') }
+  })
   const yAxisPoints = Array.from(
     { length: Math.round(range / temperatureStep) + 1 },
     (_, index) => {
@@ -573,10 +623,10 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   const primaryPathPoints = observedPoints.length && primaryPoints.length
     ? [observedPoints.at(-1)!, ...primaryPoints]
     : primaryPoints
-  const modelPaths = (snapshot.forecastModels || []).map((model) => {
+  const modelPaths = (snapshot.forecastModels || []).map((model, index) => {
     const modelPoints = coords.filter(point => point.modelId === model.id).sort((a, b) => a.x - b.x)
     const linked = observedPoints.length && modelPoints.length ? [observedPoints.at(-1)!, ...modelPoints] : modelPoints
-    return { ...model, path: path(linked), points: modelPoints }
+    return { ...model, ...weatherModelStyle(index), path: path(linked), points: modelPoints }
   }).filter(model => model.path)
   const spreadRows = [...grouped.values()].filter(rows => rows.length > 1).map(rows => ({
     x: rows[0]!.x,
@@ -586,7 +636,9 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   const spread = spreadRows.length > 1
     ? `M ${spreadRows.map(row => `${row.x.toFixed(1)} ${row.top.toFixed(1)}`).join(' L ')} L ${spreadRows.slice().reverse().map(row => `${row.x.toFixed(1)} ${row.bottom.toFixed(1)}`).join(' L ')} Z`
     : ''
-  const desiredStep = minuteRange <= 12 * 60 ? 2 * 60 : 3 * 60
+  // Le nombre d'heures affichées dépend de la place disponible pour un texte de 13 px.
+  const maxTicks = Math.max(2, Math.floor(plotWidth / 72))
+  const desiredStep = [60, 120, 180, 240, 360, 480, 720, 1440].find(step => step >= minuteRange / maxTicks) || 1440
   const firstTick = Math.ceil(firstMinute / desiredStep) * desiredStep
   const axisPoints = validTimeline
     ? Array.from({ length: Math.max(0, Math.floor((lastMinute - firstTick) / desiredStep) + 1) }, (_, index) => {
@@ -620,7 +672,7 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
 }
 
 // Mémoïse le calcul (coûteux) des graphiques par aéroport : ne se recalcule que
-// si la météo, les bets ou le mode compact changent, pas à chaque tick de l'horloge.
+// si la météo, les bets ou la largeur disponible changent, pas à chaque tick de l'horloge.
 const sparklineCache = computed(() => {
   const cache: Record<string, ReturnType<typeof sparklinePaths>> = {}
   for (const [airport, snapshot] of Object.entries(props.weatherSnapshots || {})) {
@@ -1294,26 +1346,28 @@ function getResolutionBadgeForGroup(group: CityGroup) {
               </p>
 
               <div v-if="sparklineForGroup(group)?.points.length" class="temperature-chart">
-                <div class="flex items-center justify-between gap-2 px-1 text-[9px] font-medium text-slate-700">
+                <div class="weather-chart-heading flex items-center justify-between gap-2 px-1 font-semibold text-slate-900">
                   <span class="uppercase tracking-wide">Température aujourd’hui</span>
-                  <div class="flex items-center gap-2">
+                  <div class="weather-chart-summary flex flex-wrap items-center gap-2">
                     <span v-if="weatherForGroup(group)!.forecastModels?.length" class="font-mono tabular-nums text-sky-700">
                       {{ weatherForGroup(group)!.forecastModels!.length }} modèles · écart {{ weatherTemperature(sparklineForGroup(group)!.spreadMax, weatherForGroup(group)!.unit) }}
                     </span>
                     <span v-if="temperatureTrend(weatherForGroup(group)!)" class="font-semibold text-slate-900">
                       {{ temperatureTrend(weatherForGroup(group)!)!.icon }} {{ temperatureTrend(weatherForGroup(group)!)!.label }}
                     </span>
-                    <span v-if="sparklineForGroup(group)!.primaryMax != null" class="font-mono tabular-nums text-purple-800" :title="weatherForGroup(group)!.sourceLabel">
+                    <span v-if="sparklineForGroup(group)!.primaryMax != null" class="font-mono tabular-nums weather-series-primary" :title="weatherForGroup(group)!.sourceLabel">
                       Max prévu {{ weatherForGroup(group)!.source === 'wunderground-weather-com' ? 'WU' : weatherForGroup(group)!.sourceLabel }} {{ weatherTemperature(sparklineForGroup(group)!.primaryMax, weatherForGroup(group)!.unit) }}
                     </span>
-                    <span v-if="sparklineForGroup(group)!.peakPoint" class="font-mono tabular-nums text-blue-800">
+                    <span v-if="sparklineForGroup(group)!.peakPoint" class="font-mono tabular-nums weather-series-observed">
                       Max mesuré {{ weatherTemperature(sparklineForGroup(group)!.peakPoint!.temperature, weatherForGroup(group)!.unit) }}
                     </span>
                   </div>
                 </div>
                 <svg
-                  :viewBox="`0 0 ${sparklineForGroup(group)!.chartWidth} 168`"
-                  class="h-auto w-full overflow-visible"
+                  :ref="element => registerWeatherChart(group.airport, element)"
+                  :data-airport="group.airport"
+                  :viewBox="`0 0 ${sparklineForGroup(group)!.chartWidth} 320`"
+                  class="weather-temperature-plot w-full overflow-visible"
                   role="img"
                   aria-label="Températures mesurées, prévisions par source et seuils des bets"
                   @pointerleave="hoveredWeatherPoint = null"
@@ -1332,9 +1386,9 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     v-for="point in sparklineForGroup(group)!.axisPoints"
                     :key="`grid-x-${point.timeLocal}`"
                     :x1="point.x"
-                    y1="25"
+                    y1="36"
                     :x2="point.x"
-                    y2="141"
+                    y2="274"
                     stroke="currentColor"
                     class="text-slate-900"
                   />
@@ -1342,19 +1396,19 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     v-for="tick in sparklineForGroup(group)!.yAxisPoints"
                     :key="`axis-y-${tick.value}`"
                     :x="sparklineForGroup(group)!.labelX"
-                    :y="tick.y + 3"
+                    :y="tick.y + 5"
                     text-anchor="end"
                     fill="currentColor"
-                    class="text-[7px] font-medium text-slate-600"
+                    class="weather-axis-label font-semibold text-slate-900"
                   >
                     {{ weatherTemperature(tick.value, weatherForGroup(group)!.unit) }}
                   </text>
                   <line
                     v-if="sparklineForGroup(group)!.boundaryX != null"
                     :x1="sparklineForGroup(group)!.boundaryX!"
-                    y1="18"
+                    y1="24"
                     :x2="sparklineForGroup(group)!.boundaryX!"
-                    y2="141"
+                    y2="274"
                     stroke="currentColor"
                     stroke-dasharray="2 3"
                     class="text-slate-700"
@@ -1362,10 +1416,10 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   <text
                     v-if="sparklineForGroup(group)!.boundaryX != null"
                     :x="sparklineForGroup(group)!.boundaryX!"
-                    y="14"
+                    y="18"
                     text-anchor="middle"
                     fill="currentColor"
-                    class="text-[7px] font-semibold text-slate-700"
+                    class="weather-axis-label font-semibold text-slate-900"
                   >
                     Maintenant
                   </text>
@@ -1377,19 +1431,19 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                       :y1="bet.y"
                       :y2="bet.y"
                       stroke="currentColor"
-                      stroke-width="1.5"
+                      stroke-width="2"
                       stroke-dasharray="8 4"
-                      class="text-slate-600"
+                      class="text-slate-800"
                     />
                     <text
                       :x="sparklineForGroup(group)!.chartRight - 2"
-                      :y="bet.y - 4"
+                      :y="bet.labelY"
                       text-anchor="end"
                       fill="currentColor"
                       stroke="white"
                       stroke-width="3"
                       paint-order="stroke"
-                      class="text-[8px] font-bold text-slate-800"
+                      class="weather-axis-label font-bold text-slate-900"
                     >{{ bet.label }} · {{ weatherTemperature(bet.temperature, weatherForGroup(group)!.unit) }}</text>
                   </g>
                   <path
@@ -1397,10 +1451,10 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     :d="sparklineForGroup(group)!.observed"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="2.5"
+                    stroke-width="3.5"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    class="text-blue-800"
+                    class="weather-series-observed"
                   />
                   <path
                     v-if="sparklineForGroup(group)!.spread"
@@ -1415,19 +1469,19 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     :d="model.path"
                     fill="none"
                     :stroke="model.color"
-                    stroke-width="1.35"
-                    stroke-dasharray="3 3"
+                    stroke-width="2.25"
+                    :stroke-dasharray="model.dash"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    opacity="0.82"
+                    opacity="1"
                   />
                   <path
                     v-if="sparklineForGroup(group)!.forecast"
                     :d="sparklineForGroup(group)!.forecast"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-dasharray="5 3"
+                    stroke-width="2.5"
+                    stroke-dasharray="16 7"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     class="text-slate-700"
@@ -1437,52 +1491,52 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     :d="sparklineForGroup(group)!.primaryForecast"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="3"
+                    stroke-width="3.5"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    class="text-purple-800"
+                    class="weather-series-primary"
                   />
                   <rect
                     v-for="point in sparklineForGroup(group)!.primaryPoints"
                     :key="point.timeLocal"
-                    :x="point.x - 2.5"
-                    :y="point.y - 2.5"
-                    width="5"
-                    height="5"
+                    :x="point.x - 3.5"
+                    :y="point.y - 3.5"
+                    width="7"
+                    height="7"
                     fill="white"
                     stroke="currentColor"
-                    stroke-width="1.5"
-                    class="text-purple-800"
+                    stroke-width="2"
+                    class="weather-series-primary"
                   />
                   <circle
                     v-for="point in sparklineForGroup(group)!.observedPoints"
                     :key="`observed-dot-${point.timeLocal}`"
                     :cx="point.x"
                     :cy="point.y"
-                    r="2.8"
+                    r="3.5"
                     fill="currentColor"
                     stroke="white"
-                    stroke-width="1.5"
-                    class="text-blue-800"
+                    stroke-width="2"
+                    class="weather-series-observed"
                   />
                   <circle
                     v-if="sparklineForGroup(group)!.peakPoint"
                     :cx="sparklineForGroup(group)!.peakPoint!.x"
                     :cy="sparklineForGroup(group)!.peakPoint!.y"
-                    r="4.5"
+                    r="6"
                     fill="white"
                     stroke="currentColor"
                     stroke-width="2"
-                    class="text-blue-800"
+                    class="weather-series-observed"
                   />
                   <text
                     v-for="point in sparklineForGroup(group)!.axisPoints"
                     :key="`axis-${point.timeLocal}`"
                     :x="point.x"
-                    y="158"
+                    y="296"
                     text-anchor="middle"
                     fill="currentColor"
-                    class="text-[8px] font-medium text-slate-700"
+                    class="weather-axis-label font-semibold text-slate-900"
                   >
                     {{ point.label || weatherHour(point.timeLocal, group.tz) }}
                   </text>
@@ -1504,9 +1558,9 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   <g v-if="hoveredWeatherPoint?.airport === group.airport" class="pointer-events-none">
                     <line
                       :x1="hoveredWeatherPoint.x"
-                      y1="20"
+                      y1="32"
                       :x2="hoveredWeatherPoint.x"
-                      y2="139"
+                      y2="274"
                       stroke="currentColor"
                       stroke-dasharray="3 3"
                       class="text-slate-900"
@@ -1522,8 +1576,8 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     <rect
                       :x="weatherTooltipX(hoveredWeatherPoint)"
                       :y="weatherTooltipY(hoveredWeatherPoint)"
-                      width="148"
-                      height="34"
+                      width="208"
+                      height="52"
                       rx="4"
                       fill="#020617"
                       stroke="#94a3b8"
@@ -1531,50 +1585,50 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     />
                     <text
                       :x="weatherTooltipX(hoveredWeatherPoint) + 6"
-                      :y="weatherTooltipY(hoveredWeatherPoint) + 12"
+                      :y="weatherTooltipY(hoveredWeatherPoint) + 18"
                       fill="white"
-                      class="text-[8px] font-semibold"
+                      class="weather-tooltip-label font-semibold"
                     >
                       {{ weatherHour(hoveredWeatherPoint.timeLocal, group.tz) }} · {{ hoveredWeatherPoint.kind === 'observed' ? 'Mesuré' : (hoveredWeatherPoint.label || 'Consensus') }}
                     </text>
                     <text
                       :x="weatherTooltipX(hoveredWeatherPoint) + 6"
-                      :y="weatherTooltipY(hoveredWeatherPoint) + 26"
-                      fill="#fde68a"
-                      class="text-[11px] font-bold"
+                      :y="weatherTooltipY(hoveredWeatherPoint) + 40"
+                      fill="white"
+                      class="weather-tooltip-temperature font-bold"
                     >
                       {{ weatherTemperature(hoveredWeatherPoint.temperature, weatherForGroup(group)!.unit) }}
                     </text>
                   </g>
                 </svg>
-                <div class="flex flex-wrap items-center justify-between gap-1 border-t border-slate-200 px-1 py-1.5 text-[9px] font-medium text-slate-700">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span v-if="sparklineForGroup(group)!.observedPoints.length" class="inline-flex items-center gap-1"><span class="h-0.5 w-3 bg-blue-800" /> ● Mesuré</span>
+                <div class="weather-chart-legend flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-1 py-2 font-medium text-slate-900">
+                  <div class="weather-chart-series flex flex-wrap items-center gap-2">
+                    <span v-if="sparklineForGroup(group)!.observedPoints.length" class="inline-flex items-center gap-1"><span class="weather-series-key weather-observed-key" aria-hidden="true" /> Mesuré · ronds</span>
                     <span v-if="sparklineForGroup(group)!.primaryPoints.length" class="inline-flex items-center gap-1">
-                      <span class="w-3 border-t-[3px] border-purple-800" /> □ {{ weatherForGroup(group)!.sourceLabel }}
+                      <span class="weather-series-key weather-primary-key" aria-hidden="true" /> {{ weatherForGroup(group)!.sourceLabel }} · carrés
                     </span>
                     <span v-if="weatherForGroup(group)!.forecastModels?.length" class="inline-flex flex-wrap items-center gap-2">
-                      <span v-for="model in weatherForGroup(group)!.forecastModels" :key="model.id" class="inline-flex items-center gap-1">
-                        <span class="w-3 border-t border-dashed" :style="{ borderColor: model.color }" /> {{ model.label }}
+                      <span v-for="model in sparklineForGroup(group)!.modelPaths" :key="model.id" class="inline-flex items-center gap-1">
+                        <span class="weather-series-key" :style="{ backgroundImage: model.legend }" aria-hidden="true" /> {{ model.label }}
                       </span>
-                      <span class="inline-flex items-center gap-1"><span class="w-3 border-t border-dashed border-slate-700" /> Moyenne modèles</span>
+                      <span class="inline-flex items-center gap-1"><span class="weather-series-key weather-consensus-key" aria-hidden="true" /> Moyenne modèles</span>
                     </span>
                   </div>
-                  <span v-if="sparklineForGroup(group)!.bets.length" class="inline-flex items-center gap-1"><span class="w-4 border-t-2 border-dashed border-slate-600" /> Seuils bets</span>
+                  <span v-if="sparklineForGroup(group)!.bets.length" class="inline-flex items-center gap-1"><span class="weather-series-key weather-bet-key" aria-hidden="true" /> Seuils bets</span>
                   <span v-if="forecastForGroup(group)" class="min-w-0 truncate" :title="forecastForGroup(group)!.reason">{{ weatherForecastLabel(forecastForGroup(group)!) }}</span>
                 </div>
                 <div v-if="sparklineForGroup(group)!.bets.length" class="bet-distances border-t border-slate-200 px-1 py-2 text-[10px] text-slate-700">
                   <p class="mb-1 font-medium">
                     Écarts bets = seuil − température · actuelle / max relevé
                   </p>
-                  <div class="grid gap-1.5 sm:grid-cols-2">
-                    <div v-for="bet in sparklineForGroup(group)!.bets" :key="bet.id" class="rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
+                  <div class="weather-bet-list grid gap-2">
+                    <div v-for="bet in sparklineForGroup(group)!.bets" :key="bet.id" class="weather-bet-card rounded border border-slate-300 bg-slate-50 px-2 py-2">
                       <p class="font-semibold text-slate-900">
                         {{ bet.id }} · {{ bet.outcome }} · {{ bet.title }}
                       </p>
                       <p class="mt-0.5 font-mono tabular-nums">
-                        Actuelle {{ betTemperatureGap(bet.temperatures, weatherForGroup(group)!.current?.temperature, weatherForGroup(group)!.unit) }}
-                        · Max {{ betTemperatureGap(bet.temperatures, dailyMaximumTemperature(weatherForGroup(group)!), weatherForGroup(group)!.unit) }}
+                        <span>Écart actuel {{ betTemperatureGap(bet.temperatures, weatherForGroup(group)!.current?.temperature, weatherForGroup(group)!.unit) }}</span>
+                        <span>Écart au max {{ betTemperatureGap(bet.temperatures, dailyMaximumTemperature(weatherForGroup(group)!), weatherForGroup(group)!.unit) }}</span>
                       </p>
                     </div>
                   </div>
@@ -2076,26 +2130,28 @@ function getResolutionBadgeForGroup(group: CityGroup) {
               </p>
 
               <div v-if="sparklineForGroup(group)?.points.length" class="temperature-chart">
-                <div class="flex items-center justify-between gap-2 px-1 text-[9px] font-medium text-slate-700">
+                <div class="weather-chart-heading flex items-center justify-between gap-2 px-1 font-semibold text-slate-900">
                   <span class="uppercase tracking-wide">Température aujourd’hui</span>
-                  <div class="flex items-center gap-2">
+                  <div class="weather-chart-summary flex flex-wrap items-center gap-2">
                     <span v-if="weatherForGroup(group)!.forecastModels?.length" class="font-mono tabular-nums text-sky-700">
                       {{ weatherForGroup(group)!.forecastModels!.length }} modèles · écart {{ weatherTemperature(sparklineForGroup(group)!.spreadMax, weatherForGroup(group)!.unit) }}
                     </span>
                     <span v-if="temperatureTrend(weatherForGroup(group)!)" class="font-semibold text-slate-900">
                       {{ temperatureTrend(weatherForGroup(group)!)!.icon }} {{ temperatureTrend(weatherForGroup(group)!)!.label }}
                     </span>
-                    <span v-if="sparklineForGroup(group)!.primaryMax != null" class="font-mono tabular-nums text-purple-800" :title="weatherForGroup(group)!.sourceLabel">
+                    <span v-if="sparklineForGroup(group)!.primaryMax != null" class="font-mono tabular-nums weather-series-primary" :title="weatherForGroup(group)!.sourceLabel">
                       Max prévu {{ weatherForGroup(group)!.source === 'wunderground-weather-com' ? 'WU' : weatherForGroup(group)!.sourceLabel }} {{ weatherTemperature(sparklineForGroup(group)!.primaryMax, weatherForGroup(group)!.unit) }}
                     </span>
-                    <span v-if="sparklineForGroup(group)!.peakPoint" class="font-mono tabular-nums text-blue-800">
+                    <span v-if="sparklineForGroup(group)!.peakPoint" class="font-mono tabular-nums weather-series-observed">
                       Max mesuré {{ weatherTemperature(sparklineForGroup(group)!.peakPoint!.temperature, weatherForGroup(group)!.unit) }}
                     </span>
                   </div>
                 </div>
                 <svg
-                  :viewBox="`0 0 ${sparklineForGroup(group)!.chartWidth} 168`"
-                  class="h-auto w-full overflow-visible"
+                  :ref="element => registerWeatherChart(group.airport, element)"
+                  :data-airport="group.airport"
+                  :viewBox="`0 0 ${sparklineForGroup(group)!.chartWidth} 320`"
+                  class="weather-temperature-plot w-full overflow-visible"
                   role="img"
                   aria-label="Températures mesurées, prévisions par source et seuils des bets"
                   @pointerleave="hoveredWeatherPoint = null"
@@ -2114,9 +2170,9 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     v-for="point in sparklineForGroup(group)!.axisPoints"
                     :key="`grid-x-${point.timeLocal}`"
                     :x1="point.x"
-                    y1="25"
+                    y1="36"
                     :x2="point.x"
-                    y2="141"
+                    y2="274"
                     stroke="currentColor"
                     class="text-slate-900"
                   />
@@ -2124,19 +2180,19 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     v-for="tick in sparklineForGroup(group)!.yAxisPoints"
                     :key="`axis-y-${tick.value}`"
                     :x="sparklineForGroup(group)!.labelX"
-                    :y="tick.y + 3"
+                    :y="tick.y + 5"
                     text-anchor="end"
                     fill="currentColor"
-                    class="text-[7px] font-medium text-slate-600"
+                    class="weather-axis-label font-semibold text-slate-900"
                   >
                     {{ weatherTemperature(tick.value, weatherForGroup(group)!.unit) }}
                   </text>
                   <line
                     v-if="sparklineForGroup(group)!.boundaryX != null"
                     :x1="sparklineForGroup(group)!.boundaryX!"
-                    y1="18"
+                    y1="24"
                     :x2="sparklineForGroup(group)!.boundaryX!"
-                    y2="141"
+                    y2="274"
                     stroke="currentColor"
                     stroke-dasharray="2 3"
                     class="text-slate-700"
@@ -2144,10 +2200,10 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   <text
                     v-if="sparklineForGroup(group)!.boundaryX != null"
                     :x="sparklineForGroup(group)!.boundaryX!"
-                    y="14"
+                    y="18"
                     text-anchor="middle"
                     fill="currentColor"
-                    class="text-[7px] font-semibold text-slate-700"
+                    class="weather-axis-label font-semibold text-slate-900"
                   >
                     Maintenant
                   </text>
@@ -2159,19 +2215,19 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                       :y1="bet.y"
                       :y2="bet.y"
                       stroke="currentColor"
-                      stroke-width="1.5"
+                      stroke-width="2"
                       stroke-dasharray="8 4"
-                      class="text-slate-600"
+                      class="text-slate-800"
                     />
                     <text
                       :x="sparklineForGroup(group)!.chartRight - 2"
-                      :y="bet.y - 4"
+                      :y="bet.labelY"
                       text-anchor="end"
                       fill="currentColor"
                       stroke="white"
                       stroke-width="3"
                       paint-order="stroke"
-                      class="text-[8px] font-bold text-slate-800"
+                      class="weather-axis-label font-bold text-slate-900"
                     >{{ bet.label }} · {{ weatherTemperature(bet.temperature, weatherForGroup(group)!.unit) }}</text>
                   </g>
                   <path
@@ -2179,10 +2235,10 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     :d="sparklineForGroup(group)!.observed"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="2.5"
+                    stroke-width="3.5"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    class="text-blue-800"
+                    class="weather-series-observed"
                   />
                   <path
                     v-if="sparklineForGroup(group)!.spread"
@@ -2197,19 +2253,19 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     :d="model.path"
                     fill="none"
                     :stroke="model.color"
-                    stroke-width="1.35"
-                    stroke-dasharray="3 3"
+                    stroke-width="2.25"
+                    :stroke-dasharray="model.dash"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    opacity="0.82"
+                    opacity="1"
                   />
                   <path
                     v-if="sparklineForGroup(group)!.forecast"
                     :d="sparklineForGroup(group)!.forecast"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-dasharray="5 3"
+                    stroke-width="2.5"
+                    stroke-dasharray="16 7"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     class="text-slate-700"
@@ -2219,52 +2275,52 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     :d="sparklineForGroup(group)!.primaryForecast"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="3"
+                    stroke-width="3.5"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    class="text-purple-800"
+                    class="weather-series-primary"
                   />
                   <rect
                     v-for="point in sparklineForGroup(group)!.primaryPoints"
                     :key="point.timeLocal"
-                    :x="point.x - 2.5"
-                    :y="point.y - 2.5"
-                    width="5"
-                    height="5"
+                    :x="point.x - 3.5"
+                    :y="point.y - 3.5"
+                    width="7"
+                    height="7"
                     fill="white"
                     stroke="currentColor"
-                    stroke-width="1.5"
-                    class="text-purple-800"
+                    stroke-width="2"
+                    class="weather-series-primary"
                   />
                   <circle
                     v-for="point in sparklineForGroup(group)!.observedPoints"
                     :key="`observed-dot-${point.timeLocal}`"
                     :cx="point.x"
                     :cy="point.y"
-                    r="2.8"
+                    r="3.5"
                     fill="currentColor"
                     stroke="white"
-                    stroke-width="1.5"
-                    class="text-blue-800"
+                    stroke-width="2"
+                    class="weather-series-observed"
                   />
                   <circle
                     v-if="sparklineForGroup(group)!.peakPoint"
                     :cx="sparklineForGroup(group)!.peakPoint!.x"
                     :cy="sparklineForGroup(group)!.peakPoint!.y"
-                    r="4.5"
+                    r="6"
                     fill="white"
                     stroke="currentColor"
                     stroke-width="2"
-                    class="text-blue-800"
+                    class="weather-series-observed"
                   />
                   <text
                     v-for="point in sparklineForGroup(group)!.axisPoints"
                     :key="`axis-${point.timeLocal}`"
                     :x="point.x"
-                    y="158"
+                    y="296"
                     text-anchor="middle"
                     fill="currentColor"
-                    class="text-[8px] font-medium text-slate-700"
+                    class="weather-axis-label font-semibold text-slate-900"
                   >
                     {{ point.label || weatherHour(point.timeLocal, group.tz) }}
                   </text>
@@ -2286,9 +2342,9 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   <g v-if="hoveredWeatherPoint?.airport === group.airport" class="pointer-events-none">
                     <line
                       :x1="hoveredWeatherPoint.x"
-                      y1="20"
+                      y1="32"
                       :x2="hoveredWeatherPoint.x"
-                      y2="139"
+                      y2="274"
                       stroke="currentColor"
                       stroke-dasharray="3 3"
                       class="text-slate-900"
@@ -2304,8 +2360,8 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     <rect
                       :x="weatherTooltipX(hoveredWeatherPoint)"
                       :y="weatherTooltipY(hoveredWeatherPoint)"
-                      width="148"
-                      height="34"
+                      width="208"
+                      height="52"
                       rx="4"
                       fill="#020617"
                       stroke="#94a3b8"
@@ -2313,50 +2369,50 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     />
                     <text
                       :x="weatherTooltipX(hoveredWeatherPoint) + 6"
-                      :y="weatherTooltipY(hoveredWeatherPoint) + 12"
+                      :y="weatherTooltipY(hoveredWeatherPoint) + 18"
                       fill="white"
-                      class="text-[8px] font-semibold"
+                      class="weather-tooltip-label font-semibold"
                     >
                       {{ weatherHour(hoveredWeatherPoint.timeLocal, group.tz) }} · {{ hoveredWeatherPoint.kind === 'observed' ? 'Mesuré' : (hoveredWeatherPoint.label || 'Consensus') }}
                     </text>
                     <text
                       :x="weatherTooltipX(hoveredWeatherPoint) + 6"
-                      :y="weatherTooltipY(hoveredWeatherPoint) + 26"
-                      fill="#fde68a"
-                      class="text-[11px] font-bold"
+                      :y="weatherTooltipY(hoveredWeatherPoint) + 40"
+                      fill="white"
+                      class="weather-tooltip-temperature font-bold"
                     >
                       {{ weatherTemperature(hoveredWeatherPoint.temperature, weatherForGroup(group)!.unit) }}
                     </text>
                   </g>
                 </svg>
-                <div class="flex flex-wrap items-center justify-between gap-1 border-t border-slate-200 px-1 py-1.5 text-[9px] font-medium text-slate-700">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span v-if="sparklineForGroup(group)!.observedPoints.length" class="inline-flex items-center gap-1"><span class="h-0.5 w-3 bg-blue-800" /> ● Mesuré</span>
+                <div class="weather-chart-legend flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-1 py-2 font-medium text-slate-900">
+                  <div class="weather-chart-series flex flex-wrap items-center gap-2">
+                    <span v-if="sparklineForGroup(group)!.observedPoints.length" class="inline-flex items-center gap-1"><span class="weather-series-key weather-observed-key" aria-hidden="true" /> Mesuré · ronds</span>
                     <span v-if="sparklineForGroup(group)!.primaryPoints.length" class="inline-flex items-center gap-1">
-                      <span class="w-3 border-t-[3px] border-purple-800" /> □ {{ weatherForGroup(group)!.sourceLabel }}
+                      <span class="weather-series-key weather-primary-key" aria-hidden="true" /> {{ weatherForGroup(group)!.sourceLabel }} · carrés
                     </span>
                     <span v-if="weatherForGroup(group)!.forecastModels?.length" class="inline-flex flex-wrap items-center gap-2">
-                      <span v-for="model in weatherForGroup(group)!.forecastModels" :key="model.id" class="inline-flex items-center gap-1">
-                        <span class="w-3 border-t border-dashed" :style="{ borderColor: model.color }" /> {{ model.label }}
+                      <span v-for="model in sparklineForGroup(group)!.modelPaths" :key="model.id" class="inline-flex items-center gap-1">
+                        <span class="weather-series-key" :style="{ backgroundImage: model.legend }" aria-hidden="true" /> {{ model.label }}
                       </span>
-                      <span class="inline-flex items-center gap-1"><span class="w-3 border-t border-dashed border-slate-700" /> Moyenne modèles</span>
+                      <span class="inline-flex items-center gap-1"><span class="weather-series-key weather-consensus-key" aria-hidden="true" /> Moyenne modèles</span>
                     </span>
                   </div>
-                  <span v-if="sparklineForGroup(group)!.bets.length" class="inline-flex items-center gap-1"><span class="w-4 border-t-2 border-dashed border-slate-600" /> Seuils bets</span>
+                  <span v-if="sparklineForGroup(group)!.bets.length" class="inline-flex items-center gap-1"><span class="weather-series-key weather-bet-key" aria-hidden="true" /> Seuils bets</span>
                   <span v-if="forecastForGroup(group)" class="min-w-0 truncate" :title="forecastForGroup(group)!.reason">{{ weatherForecastLabel(forecastForGroup(group)!) }}</span>
                 </div>
                 <div v-if="sparklineForGroup(group)!.bets.length" class="bet-distances border-t border-slate-200 px-1 py-2 text-[10px] text-slate-700">
                   <p class="mb-1 font-medium">
                     Écarts bets = seuil − température · actuelle / max relevé
                   </p>
-                  <div class="grid gap-1.5 sm:grid-cols-2">
-                    <div v-for="bet in sparklineForGroup(group)!.bets" :key="bet.id" class="rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
+                  <div class="weather-bet-list grid gap-2">
+                    <div v-for="bet in sparklineForGroup(group)!.bets" :key="bet.id" class="weather-bet-card rounded border border-slate-300 bg-slate-50 px-2 py-2">
                       <p class="font-semibold text-slate-900">
                         {{ bet.id }} · {{ bet.outcome }} · {{ bet.title }}
                       </p>
                       <p class="mt-0.5 font-mono tabular-nums">
-                        Actuelle {{ betTemperatureGap(bet.temperatures, weatherForGroup(group)!.current?.temperature, weatherForGroup(group)!.unit) }}
-                        · Max {{ betTemperatureGap(bet.temperatures, dailyMaximumTemperature(weatherForGroup(group)!), weatherForGroup(group)!.unit) }}
+                        <span>Écart actuel {{ betTemperatureGap(bet.temperatures, weatherForGroup(group)!.current?.temperature, weatherForGroup(group)!.unit) }}</span>
+                        <span>Écart au max {{ betTemperatureGap(bet.temperatures, dailyMaximumTemperature(weatherForGroup(group)!), weatherForGroup(group)!.unit) }}</span>
                       </p>
                     </div>
                   </div>
