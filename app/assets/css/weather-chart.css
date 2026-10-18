@@ -34,18 +34,31 @@
   gap: 8px 16px;
 }
 
-.temperature-chart .weather-series-observed { color: #111827; }
-.temperature-chart .weather-series-primary { color: #005a9c; }
+.temperature-chart {
+  --weather-observed: #c4844a;
+  --weather-primary: #5b86a4;
+  --weather-consensus: #81909f;
+  --weather-bet: #7f8c9c;
+}
+
+.temperature-chart .weather-series-observed { color: var(--weather-observed); }
+.temperature-chart .weather-series-primary { color: var(--weather-primary); }
+.temperature-chart .weather-series-consensus { color: var(--weather-consensus); }
+.temperature-chart .weather-series-bet { color: var(--weather-bet); }
+.temperature-chart .weather-axis-label { color: #48667e; }
+/* Le résumé garde un contraste plus marqué que les traits colorés. */
+.temperature-chart .weather-chart-summary .weather-series-observed { color: #97602f; }
+.temperature-chart .weather-chart-summary .weather-series-primary { color: #436c88; }
 
 /* Les ronds, carrés et motifs de traits permettent une lecture sans distinction des teintes. */
 .weather-series-key { position: relative; display: inline-block; flex: 0 0 32px; width: 32px; height: 3px; margin-right: 3px; }
-.weather-observed-key { background: #111827; }
-.weather-primary-key { background: #005a9c; }
+.weather-observed-key { background: var(--weather-observed); }
+.weather-primary-key { background: var(--weather-primary); }
 .weather-observed-key::after, .weather-primary-key::after { content: ''; position: absolute; left: 12px; top: -2px; width: 8px; height: 8px; border: 2px solid; background: #fff; }
-.weather-observed-key::after { border-color: #111827; border-radius: 50%; }
-.weather-primary-key::after { border-color: #005a9c; }
-.weather-consensus-key { background: repeating-linear-gradient(to right, #334155 0 16px, transparent 16px 23px); }
-.weather-bet-key { background: repeating-linear-gradient(to right, #1e293b 0 8px, transparent 8px 12px); }
+.weather-observed-key::after { border-color: var(--weather-observed); border-radius: 50%; }
+.weather-primary-key::after { border-color: var(--weather-primary); }
+.weather-consensus-key { background: repeating-linear-gradient(to right, var(--weather-consensus) 0 16px, transparent 16px 23px); }
+.weather-bet-key { background: repeating-linear-gradient(to right, var(--weather-bet) 0 8px, transparent 8px 12px); }
 
 :is([data-layout="weather"], [data-layout="dossiers"]) .temperature-chart > div.bet-distances {
   font-size: 13px;

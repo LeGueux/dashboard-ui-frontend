@@ -490,9 +490,9 @@ onBeforeUnmount(() => weatherChartResizeObserver?.disconnect())
 function weatherModelStyle(index: number) {
   // Les motifs restent distincts en niveaux de gris ; les teintes pâles du flux sont remplacées.
   return [
-    { color: '#9a4f00', dash: '10 5', legend: 'repeating-linear-gradient(to right, #9a4f00 0 10px, transparent 10px 15px)' },
-    { color: '#006b57', dash: '2 5', legend: 'repeating-linear-gradient(to right, #006b57 0 2px, transparent 2px 7px)' },
-    { color: '#63509a', dash: '10 4 2 4', legend: 'repeating-linear-gradient(to right, #63509a 0 10px, transparent 10px 14px, #63509a 14px 16px, transparent 16px 20px)' }
+    { color: '#8b78a6', dash: '10 5', legend: 'repeating-linear-gradient(to right, #8b78a6 0 10px, transparent 10px 15px)' },
+    { color: '#578a82', dash: '2 5', legend: 'repeating-linear-gradient(to right, #578a82 0 2px, transparent 2px 7px)' },
+    { color: '#8a8d5f', dash: '10 4 2 4', legend: 'repeating-linear-gradient(to right, #8a8d5f 0 10px, transparent 10px 14px, #8a8d5f 14px 16px, transparent 16px 20px)' }
   ][index % 3]!
 }
 
@@ -548,7 +548,7 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   const fallbackForecast = basePoints.filter(point => point.kind === 'forecast')
   const primaryRows: ChartPoint[] = (snapshot.hourly?.length ? snapshot.hourly.slice(0, 12) : fallbackForecast.slice(0, 12))
     .filter(point => Number.isFinite(point.temperature))
-    .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: snapshot.sourceLabel, color: '#005a9c', primary: true }))
+    .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: snapshot.sourceLabel, color: '#5b86a4', primary: true }))
   const modelRows: ChartPoint[] = (snapshot.forecastModels || []).flatMap((model, index) => model.hourly.slice(0, 12)
     .filter(point => Number.isFinite(point.temperature))
     .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: model.label, color: weatherModelStyle(index).color, modelId: model.id })))
@@ -1433,7 +1433,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                       stroke="currentColor"
                       stroke-width="2"
                       stroke-dasharray="8 4"
-                      class="text-slate-800"
+                      class="weather-series-bet"
                     />
                     <text
                       :x="sparklineForGroup(group)!.chartRight - 2"
@@ -1484,7 +1484,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     stroke-dasharray="16 7"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    class="text-slate-700"
+                    class="weather-series-consensus"
                   />
                   <path
                     v-if="sparklineForGroup(group)!.primaryForecast"
@@ -2217,7 +2217,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                       stroke="currentColor"
                       stroke-width="2"
                       stroke-dasharray="8 4"
-                      class="text-slate-800"
+                      class="weather-series-bet"
                     />
                     <text
                       :x="sparklineForGroup(group)!.chartRight - 2"
@@ -2268,7 +2268,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     stroke-dasharray="16 7"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    class="text-slate-700"
+                    class="weather-series-consensus"
                   />
                   <path
                     v-if="sparklineForGroup(group)!.primaryForecast"
