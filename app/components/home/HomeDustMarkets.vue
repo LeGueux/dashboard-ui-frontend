@@ -64,31 +64,10 @@ const props = withDefaults(defineProps<{
 
 const toast = useToast()
 
-interface WeatherHoverPoint {
-  airport: string
-  x: number
-  y: number
-  timeLocal: string
-  temperature: number
-  kind?: 'observed' | 'forecast'
-  label?: string
-  color?: string
-  chartWidth?: number
-}
-
-const hoveredWeatherPoint = ref<WeatherHoverPoint | null>(null)
-
-function showWeatherPoint(airport: string, point: Omit<WeatherHoverPoint, 'airport'>) {
-  hoveredWeatherPoint.value = { airport, ...point }
-}
-
-function weatherTooltipX(point: WeatherHoverPoint) {
-  return Math.max(6, Math.min(point.x + 10, (point.chartWidth || 420) - 214))
-}
-
-function weatherTooltipY(point: WeatherHoverPoint) {
-  return Math.max(36, Math.min(210, point.y - 64))
-}
+// Ces formateurs sont réutilisables pour toutes les dates d'un même fuseau, y compris au changement d'heure.
+const clockFormatters = new Map<string, Intl.DateTimeFormat>()
+const weatherHourFormatters = new Map<string, Intl.DateTimeFormat>()
+const weatherMinuteFormatters = new Map<string, Intl.DateTimeFormat>()
 
 function formatCents(value?: number | string | null) {
   const n = Number(value ?? 0)
@@ -159,13 +138,18 @@ onBeforeUnmount(() => {
 
 // Extrait h/m/s pour un fuseau horaire donné
 function tzParts(tz: string, date: Date) {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: tz,
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  }).formatToParts(date)
+  let formatter = clockFormatters.get(tz)
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: tz,
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+    clockFormatters.set(tz, formatter)
+  }
+  const parts = formatter.formatToParts(date)
 
   const get = (t: string) => Number(parts.find(p => p.type === t)?.value || 0)
   let h = get('hour')
@@ -374,7 +358,12 @@ function weatherHour(value?: string | null, tz?: string | null) {
   const hasExplicitOffset = /(?:Z|[+-]\d{2}:\d{2})$/i.test(value)
   const parsed = hasExplicitOffset ? new Date(value) : new Date(Number.NaN)
   if (!Number.isNaN(parsed.getTime()) && tz) {
-    return new Intl.DateTimeFormat('fr-FR', { timeZone: tz, hour: '2-digit', minute: '2-digit' }).format(parsed)
+    let formatter = weatherHourFormatters.get(tz)
+    if (!formatter) {
+      formatter = new Intl.DateTimeFormat('fr-FR', { timeZone: tz, hour: '2-digit', minute: '2-digit' })
+      weatherHourFormatters.set(tz, formatter)
+    }
+    return formatter.format(parsed)
   }
   return String(value).slice(11, 16) || value
 }
@@ -397,7 +386,7 @@ function hasMetarObservations(snapshot: WeatherSnapshot) {
   return snapshot.recentObservations?.some(observation => observation.source === 'metar') || false
 }
 
-function dailyMaximumTemperature(snapshot: WeatherSnapshot) {
+function calculateDailyMaximumTemperature(snapshot: WeatherSnapshot) {
   const dayStart = weatherDayStart(snapshot)
   if (dayStart === null) return null
 
@@ -417,6 +406,17 @@ function dailyMaximumTemperature(snapshot: WeatherSnapshot) {
   return temperatures.length ? Math.max(...temperatures) : null
 }
 
+// Chaque relevé METAR consulte le même maximum ; il n'est recalculé qu'à l'arrivée de nouvelles données.
+const dailyMaximumCache = computed(() => {
+  const cache: Record<string, number | null> = {}
+  for (const snapshot of Object.values(props.weatherSnapshots)) cache[snapshot.airport] = calculateDailyMaximumTemperature(snapshot)
+  return cache
+})
+
+function dailyMaximumTemperature(snapshot: WeatherSnapshot) {
+  return dailyMaximumCache.value[snapshot.airport] ?? null
+}
+
 function isDailyMaximumTemperature(temperature: number | null, snapshot: WeatherSnapshot) {
   const maximum = dailyMaximumTemperature(snapshot)
   return maximum !== null && temperature !== null && Number(temperature) === maximum
@@ -427,11 +427,16 @@ function weatherLocalMinute(value: string, timeZone?: string | null) {
   if (explicitOffset && timeZone) {
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) return null
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone,
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', hour12: false
-    }).formatToParts(date)
+    let formatter = weatherMinuteFormatters.get(timeZone)
+    if (!formatter) {
+      formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      })
+      weatherMinuteFormatters.set(timeZone, formatter)
+    }
+    const parts = formatter.formatToParts(date)
     const part = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find(item => item.type === type)?.value)
     const hour = part('hour') === 24 ? 0 : part('hour')
     return Date.UTC(part('year'), part('month') - 1, part('day'), hour, part('minute')) / 60_000
@@ -453,39 +458,10 @@ function weatherDayStart(snapshot: WeatherSnapshot) {
 
 const compactWeatherChart = useMediaQuery('(max-width: 767px)')
 const weatherChartWidths = ref<Record<string, number>>({})
-const weatherChartElements = new Map<string, SVGSVGElement>()
-let weatherChartResizeObserver: ResizeObserver | null = null
-
-function registerWeatherChart(airport: string, element: unknown) {
-  const previous = weatherChartElements.get(airport)
-  if (previous === element) return
-  if (previous) weatherChartResizeObserver?.unobserve(previous)
-  weatherChartElements.delete(airport)
-  if (import.meta.client && element instanceof SVGSVGElement) {
-    weatherChartElements.set(airport, element)
-    weatherChartResizeObserver?.observe(element)
-  }
+function setWeatherChartWidth(airport: string, width: number) {
+  if (weatherChartWidths.value[airport] === width) return
+  weatherChartWidths.value = { ...weatherChartWidths.value, [airport]: width }
 }
-
-onMounted(() => {
-  // Le repère suit la largeur réelle : les caractères du SVG ne sont plus réduits avec le dessin.
-  weatherChartResizeObserver = new ResizeObserver((entries) => {
-    const widths = { ...weatherChartWidths.value }
-    let changed = false
-    for (const entry of entries) {
-      const airport = (entry.target as SVGSVGElement).dataset.airport
-      const width = Math.round(entry.contentRect.width)
-      if (airport && width > 0 && widths[airport] !== width) {
-        widths[airport] = width
-        changed = true
-      }
-    }
-    if (changed) weatherChartWidths.value = widths
-  })
-  for (const element of weatherChartElements.values()) weatherChartResizeObserver.observe(element)
-})
-
-onBeforeUnmount(() => weatherChartResizeObserver?.disconnect())
 
 function weatherModelStyle(index: number) {
   // Les motifs restent distincts en niveaux de gris ; les teintes pâles du flux sont remplacées.
@@ -1380,272 +1356,13 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     </span>
                   </div>
                 </div>
-                <svg
-                  :ref="element => registerWeatherChart(group.airport, element)"
-                  :data-airport="group.airport"
-                  :viewBox="`0 0 ${sparklineForGroup(group)!.chartWidth} 320`"
-                  class="weather-temperature-plot w-full overflow-visible"
-                  role="img"
-                  aria-label="Températures mesurées, prévisions et seuils des bets, avec limite à minuit local et aperçu du lendemain"
-                  @pointerleave="hoveredWeatherPoint = null"
-                >
-                  <rect
-                    v-if="sparklineForGroup(group)!.afterMidnightX != null"
-                    :x="sparklineForGroup(group)!.afterMidnightX!"
-                    y="36"
-                    :width="sparklineForGroup(group)!.chartRight - sparklineForGroup(group)!.afterMidnightX!"
-                    height="232"
-                    class="weather-next-day-zone"
-                  >
-                    <title>Après minuit local : aperçu du lendemain, hors journée du bet</title>
-                  </rect>
-                  <line
-                    v-for="tick in sparklineForGroup(group)!.yAxisPoints"
-                    :key="`grid-y-${tick.value}`"
-                    :x1="sparklineForGroup(group)!.chartLeft"
-                    :y1="tick.y"
-                    :x2="sparklineForGroup(group)!.chartRight"
-                    :y2="tick.y"
-                    stroke="currentColor"
-                    class="text-slate-900"
-                  />
-                  <line
-                    v-for="point in sparklineForGroup(group)!.axisPoints"
-                    :key="`grid-x-${point.timeLocal}`"
-                    :x1="point.x"
-                    y1="36"
-                    :x2="point.x"
-                    y2="274"
-                    stroke="currentColor"
-                    class="text-slate-900"
-                  />
-                  <text
-                    v-for="tick in sparklineForGroup(group)!.yAxisPoints"
-                    :key="`axis-y-${tick.value}`"
-                    :x="sparklineForGroup(group)!.labelX"
-                    :y="tick.y + 5"
-                    text-anchor="end"
-                    fill="currentColor"
-                    class="weather-axis-label font-semibold text-slate-900"
-                  >
-                    {{ weatherTemperature(tick.value, weatherForGroup(group)!.unit) }}
-                  </text>
-                  <line
-                    v-if="sparklineForGroup(group)!.boundaryX != null"
-                    :x1="sparklineForGroup(group)!.boundaryX!"
-                    y1="24"
-                    :x2="sparklineForGroup(group)!.boundaryX!"
-                    y2="274"
-                    stroke="currentColor"
-                    stroke-dasharray="2 3"
-                    class="text-slate-700"
-                  />
-                  <text
-                    v-if="sparklineForGroup(group)!.boundaryX != null"
-                    :x="sparklineForGroup(group)!.boundaryX!"
-                    y="18"
-                    text-anchor="middle"
-                    fill="currentColor"
-                    class="weather-axis-label font-semibold text-slate-900"
-                  >
-                    Maintenant
-                  </text>
-                  <g v-if="sparklineForGroup(group)!.midnightX != null" class="weather-midnight-marker">
-                    <title>Minuit local · fin de la journée du bet</title>
-                    <line
-                      :x1="sparklineForGroup(group)!.midnightX!"
-                      :x2="sparklineForGroup(group)!.midnightX!"
-                      y1="36"
-                      y2="280"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    />
-                    <text
-                      :x="sparklineForGroup(group)!.midnightLabelX!"
-                      y="316"
-                      text-anchor="middle"
-                      fill="currentColor"
-                      class="font-semibold"
-                    >Minuit · fin du bet</text>
-                  </g>
-                  <g v-for="bet in sparklineForGroup(group)!.betLines" :key="bet.temperature" class="bet-threshold">
-                    <title>{{ bet.label }} · {{ weatherTemperature(bet.temperature, weatherForGroup(group)!.unit) }}</title>
-                    <line
-                      :x1="sparklineForGroup(group)!.chartLeft"
-                      :x2="sparklineForGroup(group)!.betChartRight"
-                      :y1="bet.y"
-                      :y2="bet.y"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-dasharray="8 4"
-                      class="weather-series-bet"
-                    />
-                    <text
-                      :x="sparklineForGroup(group)!.betChartRight - 2"
-                      :y="bet.labelY"
-                      text-anchor="end"
-                      fill="currentColor"
-                      stroke="white"
-                      stroke-width="3"
-                      paint-order="stroke"
-                      class="weather-axis-label font-bold text-slate-900"
-                    >{{ bet.label }} · {{ weatherTemperature(bet.temperature, weatherForGroup(group)!.unit) }}</text>
-                  </g>
-                  <path
-                    v-if="sparklineForGroup(group)!.observed"
-                    :d="sparklineForGroup(group)!.observed"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="weather-series-observed"
-                  />
-                  <path
-                    v-if="sparklineForGroup(group)!.spread"
-                    :d="sparklineForGroup(group)!.spread"
-                    fill="#38bdf8"
-                    fill-opacity="0.10"
-                    stroke="none"
-                  />
-                  <path
-                    v-for="model in sparklineForGroup(group)!.modelPaths"
-                    :key="`model-${model.id}`"
-                    :d="model.path"
-                    fill="none"
-                    :stroke="model.color"
-                    stroke-width="2.25"
-                    :stroke-dasharray="model.dash"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    opacity="1"
-                  />
-                  <path
-                    v-if="sparklineForGroup(group)!.forecast"
-                    :d="sparklineForGroup(group)!.forecast"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                    stroke-dasharray="16 7"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="weather-series-consensus"
-                  />
-                  <path
-                    v-if="sparklineForGroup(group)!.primaryForecast"
-                    :d="sparklineForGroup(group)!.primaryForecast"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="weather-series-primary"
-                  />
-                  <rect
-                    v-for="point in sparklineForGroup(group)!.primaryPoints"
-                    :key="point.timeLocal"
-                    :x="point.x - 3.5"
-                    :y="point.y - 3.5"
-                    width="7"
-                    height="7"
-                    fill="white"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    class="weather-series-primary"
-                  />
-                  <circle
-                    v-for="point in sparklineForGroup(group)!.observedPoints"
-                    :key="`observed-dot-${point.timeLocal}`"
-                    :cx="point.x"
-                    :cy="point.y"
-                    r="3.5"
-                    fill="currentColor"
-                    stroke="white"
-                    stroke-width="2"
-                    class="weather-series-observed"
-                  />
-                  <circle
-                    v-if="sparklineForGroup(group)!.peakPoint"
-                    :cx="sparklineForGroup(group)!.peakPoint!.x"
-                    :cy="sparklineForGroup(group)!.peakPoint!.y"
-                    r="6"
-                    fill="white"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    class="weather-series-observed"
-                  />
-                  <text
-                    v-for="point in sparklineForGroup(group)!.axisPoints"
-                    :key="`axis-${point.timeLocal}`"
-                    :x="point.x"
-                    y="296"
-                    text-anchor="middle"
-                    fill="currentColor"
-                    class="weather-axis-label font-semibold text-slate-900"
-                  >
-                    {{ point.label || weatherHour(point.timeLocal, group.tz) }}
-                  </text>
-                  <circle
-                    v-for="point in sparklineForGroup(group)!.points"
-                    :key="`hover-${point.kind}-${point.label || 'default'}-${point.timeLocal}`"
-                    :cx="point.x"
-                    :cy="point.y"
-                    r="9"
-                    fill="transparent"
-                    class="cursor-crosshair"
-                    tabindex="0"
-                    :aria-label="`${weatherHour(point.timeLocal, group.tz)}, ${weatherTemperature(point.temperature, weatherForGroup(group)!.unit)}, ${point.kind === 'observed' ? 'mesuré' : point.label || 'prévision'}`"
-                    @pointerenter="showWeatherPoint(group.airport, point)"
-                    @focus="showWeatherPoint(group.airport, point)"
-                    @blur="hoveredWeatherPoint = null"
-                    @click="showWeatherPoint(group.airport, point)"
-                  />
-                  <g v-if="hoveredWeatherPoint?.airport === group.airport" class="pointer-events-none">
-                    <line
-                      :x1="hoveredWeatherPoint.x"
-                      y1="32"
-                      :x2="hoveredWeatherPoint.x"
-                      y2="274"
-                      stroke="currentColor"
-                      stroke-dasharray="3 3"
-                      class="text-slate-900"
-                    />
-                    <circle
-                      :cx="hoveredWeatherPoint.x"
-                      :cy="hoveredWeatherPoint.y"
-                      r="4"
-                      fill="white"
-                      stroke="white"
-                      stroke-width="2"
-                    />
-                    <rect
-                      :x="weatherTooltipX(hoveredWeatherPoint)"
-                      :y="weatherTooltipY(hoveredWeatherPoint)"
-                      width="208"
-                      height="52"
-                      rx="4"
-                      fill="#020617"
-                      stroke="#94a3b8"
-                      stroke-width="0.8"
-                    />
-                    <text
-                      :x="weatherTooltipX(hoveredWeatherPoint) + 6"
-                      :y="weatherTooltipY(hoveredWeatherPoint) + 18"
-                      fill="white"
-                      class="weather-tooltip-label font-semibold"
-                    >
-                      {{ weatherHour(hoveredWeatherPoint.timeLocal, group.tz) }} · {{ hoveredWeatherPoint.kind === 'observed' ? 'Mesuré' : (hoveredWeatherPoint.label || 'Consensus') }}
-                    </text>
-                    <text
-                      :x="weatherTooltipX(hoveredWeatherPoint) + 6"
-                      :y="weatherTooltipY(hoveredWeatherPoint) + 40"
-                      fill="white"
-                      class="weather-tooltip-temperature font-bold"
-                    >
-                      {{ weatherTemperature(hoveredWeatherPoint.temperature, weatherForGroup(group)!.unit) }}
-                    </text>
-                  </g>
-                </svg>
+                <HomeWeatherChart
+                  :chart="sparklineForGroup(group)!"
+                  :airport="group.airport"
+                  :unit="weatherForGroup(group)!.unit"
+                  :time-zone="group.tz"
+                  @resize="width => setWeatherChartWidth(group.airport, width)"
+                />
                 <div class="weather-chart-legend flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-1 py-2 font-medium text-slate-900">
                   <div class="weather-chart-series flex flex-wrap items-center gap-2">
                     <span v-if="sparklineForGroup(group)!.observedPoints.length" class="inline-flex items-center gap-1"><span class="weather-series-key weather-observed-key" aria-hidden="true" /> Mesuré · ronds</span>
@@ -2192,272 +1909,13 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     </span>
                   </div>
                 </div>
-                <svg
-                  :ref="element => registerWeatherChart(group.airport, element)"
-                  :data-airport="group.airport"
-                  :viewBox="`0 0 ${sparklineForGroup(group)!.chartWidth} 320`"
-                  class="weather-temperature-plot w-full overflow-visible"
-                  role="img"
-                  aria-label="Températures mesurées, prévisions et seuils des bets, avec limite à minuit local et aperçu du lendemain"
-                  @pointerleave="hoveredWeatherPoint = null"
-                >
-                  <rect
-                    v-if="sparklineForGroup(group)!.afterMidnightX != null"
-                    :x="sparklineForGroup(group)!.afterMidnightX!"
-                    y="36"
-                    :width="sparklineForGroup(group)!.chartRight - sparklineForGroup(group)!.afterMidnightX!"
-                    height="232"
-                    class="weather-next-day-zone"
-                  >
-                    <title>Après minuit local : aperçu du lendemain, hors journée du bet</title>
-                  </rect>
-                  <line
-                    v-for="tick in sparklineForGroup(group)!.yAxisPoints"
-                    :key="`grid-y-${tick.value}`"
-                    :x1="sparklineForGroup(group)!.chartLeft"
-                    :y1="tick.y"
-                    :x2="sparklineForGroup(group)!.chartRight"
-                    :y2="tick.y"
-                    stroke="currentColor"
-                    class="text-slate-900"
-                  />
-                  <line
-                    v-for="point in sparklineForGroup(group)!.axisPoints"
-                    :key="`grid-x-${point.timeLocal}`"
-                    :x1="point.x"
-                    y1="36"
-                    :x2="point.x"
-                    y2="274"
-                    stroke="currentColor"
-                    class="text-slate-900"
-                  />
-                  <text
-                    v-for="tick in sparklineForGroup(group)!.yAxisPoints"
-                    :key="`axis-y-${tick.value}`"
-                    :x="sparklineForGroup(group)!.labelX"
-                    :y="tick.y + 5"
-                    text-anchor="end"
-                    fill="currentColor"
-                    class="weather-axis-label font-semibold text-slate-900"
-                  >
-                    {{ weatherTemperature(tick.value, weatherForGroup(group)!.unit) }}
-                  </text>
-                  <line
-                    v-if="sparklineForGroup(group)!.boundaryX != null"
-                    :x1="sparklineForGroup(group)!.boundaryX!"
-                    y1="24"
-                    :x2="sparklineForGroup(group)!.boundaryX!"
-                    y2="274"
-                    stroke="currentColor"
-                    stroke-dasharray="2 3"
-                    class="text-slate-700"
-                  />
-                  <text
-                    v-if="sparklineForGroup(group)!.boundaryX != null"
-                    :x="sparklineForGroup(group)!.boundaryX!"
-                    y="18"
-                    text-anchor="middle"
-                    fill="currentColor"
-                    class="weather-axis-label font-semibold text-slate-900"
-                  >
-                    Maintenant
-                  </text>
-                  <g v-if="sparklineForGroup(group)!.midnightX != null" class="weather-midnight-marker">
-                    <title>Minuit local · fin de la journée du bet</title>
-                    <line
-                      :x1="sparklineForGroup(group)!.midnightX!"
-                      :x2="sparklineForGroup(group)!.midnightX!"
-                      y1="36"
-                      y2="280"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    />
-                    <text
-                      :x="sparklineForGroup(group)!.midnightLabelX!"
-                      y="316"
-                      text-anchor="middle"
-                      fill="currentColor"
-                      class="font-semibold"
-                    >Minuit · fin du bet</text>
-                  </g>
-                  <g v-for="bet in sparklineForGroup(group)!.betLines" :key="bet.temperature" class="bet-threshold">
-                    <title>{{ bet.label }} · {{ weatherTemperature(bet.temperature, weatherForGroup(group)!.unit) }}</title>
-                    <line
-                      :x1="sparklineForGroup(group)!.chartLeft"
-                      :x2="sparklineForGroup(group)!.betChartRight"
-                      :y1="bet.y"
-                      :y2="bet.y"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-dasharray="8 4"
-                      class="weather-series-bet"
-                    />
-                    <text
-                      :x="sparklineForGroup(group)!.betChartRight - 2"
-                      :y="bet.labelY"
-                      text-anchor="end"
-                      fill="currentColor"
-                      stroke="white"
-                      stroke-width="3"
-                      paint-order="stroke"
-                      class="weather-axis-label font-bold text-slate-900"
-                    >{{ bet.label }} · {{ weatherTemperature(bet.temperature, weatherForGroup(group)!.unit) }}</text>
-                  </g>
-                  <path
-                    v-if="sparklineForGroup(group)!.observed"
-                    :d="sparklineForGroup(group)!.observed"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="weather-series-observed"
-                  />
-                  <path
-                    v-if="sparklineForGroup(group)!.spread"
-                    :d="sparklineForGroup(group)!.spread"
-                    fill="#38bdf8"
-                    fill-opacity="0.10"
-                    stroke="none"
-                  />
-                  <path
-                    v-for="model in sparklineForGroup(group)!.modelPaths"
-                    :key="`model-${model.id}`"
-                    :d="model.path"
-                    fill="none"
-                    :stroke="model.color"
-                    stroke-width="2.25"
-                    :stroke-dasharray="model.dash"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    opacity="1"
-                  />
-                  <path
-                    v-if="sparklineForGroup(group)!.forecast"
-                    :d="sparklineForGroup(group)!.forecast"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                    stroke-dasharray="16 7"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="weather-series-consensus"
-                  />
-                  <path
-                    v-if="sparklineForGroup(group)!.primaryForecast"
-                    :d="sparklineForGroup(group)!.primaryForecast"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="weather-series-primary"
-                  />
-                  <rect
-                    v-for="point in sparklineForGroup(group)!.primaryPoints"
-                    :key="point.timeLocal"
-                    :x="point.x - 3.5"
-                    :y="point.y - 3.5"
-                    width="7"
-                    height="7"
-                    fill="white"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    class="weather-series-primary"
-                  />
-                  <circle
-                    v-for="point in sparklineForGroup(group)!.observedPoints"
-                    :key="`observed-dot-${point.timeLocal}`"
-                    :cx="point.x"
-                    :cy="point.y"
-                    r="3.5"
-                    fill="currentColor"
-                    stroke="white"
-                    stroke-width="2"
-                    class="weather-series-observed"
-                  />
-                  <circle
-                    v-if="sparklineForGroup(group)!.peakPoint"
-                    :cx="sparklineForGroup(group)!.peakPoint!.x"
-                    :cy="sparklineForGroup(group)!.peakPoint!.y"
-                    r="6"
-                    fill="white"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    class="weather-series-observed"
-                  />
-                  <text
-                    v-for="point in sparklineForGroup(group)!.axisPoints"
-                    :key="`axis-${point.timeLocal}`"
-                    :x="point.x"
-                    y="296"
-                    text-anchor="middle"
-                    fill="currentColor"
-                    class="weather-axis-label font-semibold text-slate-900"
-                  >
-                    {{ point.label || weatherHour(point.timeLocal, group.tz) }}
-                  </text>
-                  <circle
-                    v-for="point in sparklineForGroup(group)!.points"
-                    :key="`hover-${point.kind}-${point.label || 'default'}-${point.timeLocal}`"
-                    :cx="point.x"
-                    :cy="point.y"
-                    r="9"
-                    fill="transparent"
-                    class="cursor-crosshair"
-                    tabindex="0"
-                    :aria-label="`${weatherHour(point.timeLocal, group.tz)}, ${weatherTemperature(point.temperature, weatherForGroup(group)!.unit)}, ${point.kind === 'observed' ? 'mesuré' : point.label || 'prévision'}`"
-                    @pointerenter="showWeatherPoint(group.airport, point)"
-                    @focus="showWeatherPoint(group.airport, point)"
-                    @blur="hoveredWeatherPoint = null"
-                    @click="showWeatherPoint(group.airport, point)"
-                  />
-                  <g v-if="hoveredWeatherPoint?.airport === group.airport" class="pointer-events-none">
-                    <line
-                      :x1="hoveredWeatherPoint.x"
-                      y1="32"
-                      :x2="hoveredWeatherPoint.x"
-                      y2="274"
-                      stroke="currentColor"
-                      stroke-dasharray="3 3"
-                      class="text-slate-900"
-                    />
-                    <circle
-                      :cx="hoveredWeatherPoint.x"
-                      :cy="hoveredWeatherPoint.y"
-                      r="4"
-                      fill="white"
-                      stroke="white"
-                      stroke-width="2"
-                    />
-                    <rect
-                      :x="weatherTooltipX(hoveredWeatherPoint)"
-                      :y="weatherTooltipY(hoveredWeatherPoint)"
-                      width="208"
-                      height="52"
-                      rx="4"
-                      fill="#020617"
-                      stroke="#94a3b8"
-                      stroke-width="0.8"
-                    />
-                    <text
-                      :x="weatherTooltipX(hoveredWeatherPoint) + 6"
-                      :y="weatherTooltipY(hoveredWeatherPoint) + 18"
-                      fill="white"
-                      class="weather-tooltip-label font-semibold"
-                    >
-                      {{ weatherHour(hoveredWeatherPoint.timeLocal, group.tz) }} · {{ hoveredWeatherPoint.kind === 'observed' ? 'Mesuré' : (hoveredWeatherPoint.label || 'Consensus') }}
-                    </text>
-                    <text
-                      :x="weatherTooltipX(hoveredWeatherPoint) + 6"
-                      :y="weatherTooltipY(hoveredWeatherPoint) + 40"
-                      fill="white"
-                      class="weather-tooltip-temperature font-bold"
-                    >
-                      {{ weatherTemperature(hoveredWeatherPoint.temperature, weatherForGroup(group)!.unit) }}
-                    </text>
-                  </g>
-                </svg>
+                <HomeWeatherChart
+                  :chart="sparklineForGroup(group)!"
+                  :airport="group.airport"
+                  :unit="weatherForGroup(group)!.unit"
+                  :time-zone="group.tz"
+                  @resize="width => setWeatherChartWidth(group.airport, width)"
+                />
                 <div class="weather-chart-legend flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-1 py-2 font-medium text-slate-900">
                   <div class="weather-chart-series flex flex-wrap items-center gap-2">
                     <span v-if="sparklineForGroup(group)!.observedPoints.length" class="inline-flex items-center gap-1"><span class="weather-series-key weather-observed-key" aria-hidden="true" /> Mesuré · ronds</span>
