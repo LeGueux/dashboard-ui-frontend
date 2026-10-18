@@ -46,6 +46,9 @@
 .temperature-chart .weather-series-consensus { color: var(--weather-consensus); }
 .temperature-chart .weather-series-bet { color: var(--weather-bet); }
 .temperature-chart .weather-axis-label { color: #48667e; }
+/* Un fond discret distingue le lendemain ; la ligne reste identifiable sans percevoir sa couleur. */
+.temperature-chart .weather-next-day-zone { fill: #edf2f6; }
+.temperature-chart .weather-midnight-marker { color: #71889b; }
 /* Le résumé garde un contraste plus marqué que les traits colorés. */
 .temperature-chart .weather-chart-summary .weather-series-observed { color: #97602f; }
 .temperature-chart .weather-chart-summary .weather-series-primary { color: #436c88; }

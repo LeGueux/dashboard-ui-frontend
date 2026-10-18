@@ -539,6 +539,7 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
     .filter(point => Number.isFinite(point.temperature))
     .map(point => ({ ...point, temperature: Number(point.temperature) }))
   const dayStart = weatherDayStart(snapshot)
+  const dayEnd = dayStart === null ? null : dayStart + 24 * 60
   // En début de journée, le flux peut aussi contenir des relevés de la veille pour le tableau METAR.
   const observations = basePoints.filter((point) => {
     if (point.kind !== 'observed' || dayStart === null) return false
@@ -554,7 +555,7 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
     .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: model.label, color: weatherModelStyle(index).color, modelId: model.id })))
   const forecastRows = [...primaryRows, ...modelRows]
   const points = [...observations, ...(forecastRows.length ? forecastRows : fallbackForecast)]
-  const empty = { observed: '', forecast: '', primaryForecast: '', spread: '', modelPaths: [], points: [], observedPoints: [], forecastPoints: [], primaryPoints: [], axisPoints: [], yAxisPoints: [], betLines: [] as { temperature: number, y: number, labelY: number, label: string }[], bets, primaryMax: null as number | null, boundaryX: null, peakPoint: null, min: null, middle: null, max: null, consensusMax: null, spreadMax: null, chartWidth, chartLeft, chartRight, labelX: chartLeft - 5 }
+  const empty = { observed: '', forecast: '', primaryForecast: '', spread: '', modelPaths: [], points: [], observedPoints: [], forecastPoints: [], primaryPoints: [], axisPoints: [], yAxisPoints: [], betLines: [] as { temperature: number, y: number, labelY: number, label: string }[], bets, primaryMax: null as number | null, boundaryX: null, midnightX: null as number | null, afterMidnightX: null as number | null, midnightLabelX: null as number | null, betChartRight: chartRight, peakPoint: null, min: null, middle: null, max: null, consensusMax: null, spreadMax: null, chartWidth, chartLeft, chartRight, labelX: chartLeft - 5 }
   if (points.length < 2) return empty
   // Les seuils participent à l'échelle pour qu'un bet au-dessus du maximum reste visible.
   const values = [...points.map(point => point.temperature), ...bets.flatMap(bet => bet.temperatures)]
@@ -597,6 +598,11 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   const firstMinute = validTimeline ? Math.min(...localMinutes) : 0
   const lastMinute = validTimeline ? Math.max(...localMinutes) : points.length - 1
   const minuteRange = lastMinute - firstMinute || 1
+  // La limite est le prochain minuit de la station, dans le même repère local que les courbes.
+  const scaleMinuteX = (minute: number) => chartLeft + ((minute - firstMinute) / minuteRange) * plotWidth
+  const midnightX = validTimeline && dayEnd !== null && dayEnd >= firstMinute && dayEnd <= lastMinute ? scaleMinuteX(dayEnd) : null
+  const afterMidnightX = validTimeline && dayEnd !== null && dayEnd < lastMinute ? scaleMinuteX(Math.max(firstMinute, dayEnd)) : null
+  const betChartRight = validTimeline && dayEnd !== null ? scaleMinuteX(Math.max(firstMinute, Math.min(lastMinute, dayEnd))) : chartRight
   const coords = points.map((point, index) => ({
     ...point,
     x: chartLeft + ((validTimeline ? weatherLocalMinute(point.timeLocal, snapshot.tz)! - firstMinute : index) / minuteRange) * plotWidth,
@@ -607,6 +613,12 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   const observedPoints = coords.filter(point => point.kind === 'observed')
   const rawForecastPoints = coords.filter(point => point.kind === 'forecast' && point.modelId)
   const primaryPoints = coords.filter(point => point.primary)
+  // Les prévisions du lendemain restent visibles, mais ne gonflent pas le maximum du jour.
+  const withinBetDay = (point: ChartPoint) => {
+    const minute = weatherLocalMinute(point.timeLocal, snapshot.tz)
+    return minute !== null && dayStart !== null && dayEnd !== null && minute >= dayStart && minute < dayEnd
+  }
+  const dailyPrimaryPoints = primaryPoints.filter(withinBetDay)
   const grouped = new Map<string, typeof rawForecastPoints>()
   for (const point of rawForecastPoints) grouped.set(point.timeLocal, [...(grouped.get(point.timeLocal) || []), point])
   const forecastPoints = [...grouped.entries()].map(([timeLocal, rows]) => ({
@@ -616,6 +628,7 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
     y: scaleTemperatureY(rows.reduce((sum, row) => sum + row.temperature, 0) / rows.length),
     chartWidth
   })).sort((a, b) => a.x - b.x)
+  const dailyForecastPoints = forecastPoints.filter(withinBetDay)
   const peakPoint = observedPoints.reduce<(typeof observedPoints)[number] | null>((peak, point) => !peak || point.temperature > peak.temperature ? point : peak, null)
   const forecastPathPoints = observedPoints.length && forecastPoints.length
     ? [observedPoints.at(-1)!, ...forecastPoints]
@@ -655,17 +668,21 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
     observedPoints,
     forecastPoints,
     primaryPoints,
-    primaryMax: primaryPoints.length ? Math.max(...primaryPoints.map(point => point.temperature)) : null,
+    primaryMax: dailyPrimaryPoints.length ? Math.max(...dailyPrimaryPoints.map(point => point.temperature)) : null,
     bets,
-    betLines,
+    betLines: betChartRight > chartLeft ? betLines : [],
     axisPoints,
     yAxisPoints,
     boundaryX: primaryPoints[0]?.x ?? forecastPoints[0]?.x ?? null,
+    midnightX,
+    afterMidnightX,
+    midnightLabelX: midnightX === null ? null : Math.max(chartLeft + 75, Math.min(chartRight - 75, midnightX)),
+    betChartRight,
     peakPoint,
     min,
     middle: min + range / 2,
     max,
-    consensusMax: forecastPoints.length ? Math.max(...forecastPoints.map(point => point.temperature)) : null,
+    consensusMax: dailyForecastPoints.length ? Math.max(...dailyForecastPoints.map(point => point.temperature)) : null,
     spreadMax: spreadRows.length ? Math.max(...[...grouped.values()].map(rows => Math.max(...rows.map(row => row.temperature)) - Math.min(...rows.map(row => row.temperature)))) : null,
     chartWidth, chartLeft, chartRight, labelX: chartLeft - 5
   }
@@ -1369,9 +1386,19 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   :viewBox="`0 0 ${sparklineForGroup(group)!.chartWidth} 320`"
                   class="weather-temperature-plot w-full overflow-visible"
                   role="img"
-                  aria-label="Températures mesurées, prévisions par source et seuils des bets"
+                  aria-label="Températures mesurées, prévisions et seuils des bets, avec limite à minuit local et aperçu du lendemain"
                   @pointerleave="hoveredWeatherPoint = null"
                 >
+                  <rect
+                    v-if="sparklineForGroup(group)!.afterMidnightX != null"
+                    :x="sparklineForGroup(group)!.afterMidnightX!"
+                    y="36"
+                    :width="sparklineForGroup(group)!.chartRight - sparklineForGroup(group)!.afterMidnightX!"
+                    height="232"
+                    class="weather-next-day-zone"
+                  >
+                    <title>Après minuit local : aperçu du lendemain, hors journée du bet</title>
+                  </rect>
                   <line
                     v-for="tick in sparklineForGroup(group)!.yAxisPoints"
                     :key="`grid-y-${tick.value}`"
@@ -1423,11 +1450,29 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   >
                     Maintenant
                   </text>
+                  <g v-if="sparklineForGroup(group)!.midnightX != null" class="weather-midnight-marker">
+                    <title>Minuit local · fin de la journée du bet</title>
+                    <line
+                      :x1="sparklineForGroup(group)!.midnightX!"
+                      :x2="sparklineForGroup(group)!.midnightX!"
+                      y1="36"
+                      y2="280"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    />
+                    <text
+                      :x="sparklineForGroup(group)!.midnightLabelX!"
+                      y="316"
+                      text-anchor="middle"
+                      fill="currentColor"
+                      class="font-semibold"
+                    >Minuit · fin du bet</text>
+                  </g>
                   <g v-for="bet in sparklineForGroup(group)!.betLines" :key="bet.temperature" class="bet-threshold">
                     <title>{{ bet.label }} · {{ weatherTemperature(bet.temperature, weatherForGroup(group)!.unit) }}</title>
                     <line
                       :x1="sparklineForGroup(group)!.chartLeft"
-                      :x2="sparklineForGroup(group)!.chartRight"
+                      :x2="sparklineForGroup(group)!.betChartRight"
                       :y1="bet.y"
                       :y2="bet.y"
                       stroke="currentColor"
@@ -1436,7 +1481,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                       class="weather-series-bet"
                     />
                     <text
-                      :x="sparklineForGroup(group)!.chartRight - 2"
+                      :x="sparklineForGroup(group)!.betChartRight - 2"
                       :y="bet.labelY"
                       text-anchor="end"
                       fill="currentColor"
@@ -2153,9 +2198,19 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   :viewBox="`0 0 ${sparklineForGroup(group)!.chartWidth} 320`"
                   class="weather-temperature-plot w-full overflow-visible"
                   role="img"
-                  aria-label="Températures mesurées, prévisions par source et seuils des bets"
+                  aria-label="Températures mesurées, prévisions et seuils des bets, avec limite à minuit local et aperçu du lendemain"
                   @pointerleave="hoveredWeatherPoint = null"
                 >
+                  <rect
+                    v-if="sparklineForGroup(group)!.afterMidnightX != null"
+                    :x="sparklineForGroup(group)!.afterMidnightX!"
+                    y="36"
+                    :width="sparklineForGroup(group)!.chartRight - sparklineForGroup(group)!.afterMidnightX!"
+                    height="232"
+                    class="weather-next-day-zone"
+                  >
+                    <title>Après minuit local : aperçu du lendemain, hors journée du bet</title>
+                  </rect>
                   <line
                     v-for="tick in sparklineForGroup(group)!.yAxisPoints"
                     :key="`grid-y-${tick.value}`"
@@ -2207,11 +2262,29 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   >
                     Maintenant
                   </text>
+                  <g v-if="sparklineForGroup(group)!.midnightX != null" class="weather-midnight-marker">
+                    <title>Minuit local · fin de la journée du bet</title>
+                    <line
+                      :x1="sparklineForGroup(group)!.midnightX!"
+                      :x2="sparklineForGroup(group)!.midnightX!"
+                      y1="36"
+                      y2="280"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    />
+                    <text
+                      :x="sparklineForGroup(group)!.midnightLabelX!"
+                      y="316"
+                      text-anchor="middle"
+                      fill="currentColor"
+                      class="font-semibold"
+                    >Minuit · fin du bet</text>
+                  </g>
                   <g v-for="bet in sparklineForGroup(group)!.betLines" :key="bet.temperature" class="bet-threshold">
                     <title>{{ bet.label }} · {{ weatherTemperature(bet.temperature, weatherForGroup(group)!.unit) }}</title>
                     <line
                       :x1="sparklineForGroup(group)!.chartLeft"
-                      :x2="sparklineForGroup(group)!.chartRight"
+                      :x2="sparklineForGroup(group)!.betChartRight"
                       :y1="bet.y"
                       :y2="bet.y"
                       stroke="currentColor"
@@ -2220,7 +2293,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                       class="weather-series-bet"
                     />
                     <text
-                      :x="sparklineForGroup(group)!.chartRight - 2"
+                      :x="sparklineForGroup(group)!.betChartRight - 2"
                       :y="bet.labelY"
                       text-anchor="end"
                       fill="currentColor"
