@@ -3,6 +3,7 @@
 
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { WeatherObservation, WeatherSnapshot, WeatherMarketForecast } from '~/composables/useDustMarkets'
+import { calendarDateLabel, marketCalendarDate, stationDate } from '~/utils/marketDate'
 
 const { dashboardLayout } = useDashboardLayout()
 
@@ -102,6 +103,7 @@ function formatBetDateLabel(value?: string | null) {
   const parsed = new Date(raw)
   if (!Number.isNaN(parsed.getTime())) {
     return new Intl.DateTimeFormat('fr-FR', {
+      timeZone: 'UTC',
       day: '2-digit',
       month: '2-digit'
     }).format(parsed)
@@ -802,6 +804,47 @@ const groups = computed<CityGroup[]>(() => {
   return list
 })
 
+// La clé ne change qu'au minuit d'une station ; les contrôles ne suivent pas chaque seconde de l'horloge.
+const stationDays = computed(() => JSON.stringify(groups.value.map(group => [
+  group.city,
+  now.value ? stationDate(now.value, group.tz || weatherForGroup(group)?.tz) : null
+])))
+
+const marketDateGuards = computed(() => {
+  const days = new Map<string, string | null>(JSON.parse(stationDays.value))
+  return new Map(groups.value.map((group) => {
+    const localDate = days.get(group.city)
+    const timeZone = group.tz || weatherForGroup(group)?.tz
+    const dates = group.markets.map(market => localDate ? marketCalendarDate(market.date, localDate, market.slug) : null)
+    const dateLabels = [...new Set(dates.map((date, index) => date ? calendarDateLabel(date) : group.markets[index]?.date || 'inconnue'))].join(', ')
+    const localDateLabel = localDate ? calendarDateLabel(localDate) : 'inconnue'
+    const marketMatchesToday = !!localDate && dates.length > 0 && dates.every(date => date === localDate)
+    let warning = null
+
+    if (!localDate || dates.some(date => date === null)) {
+      warning = { title: 'Date du pari non vérifiable', details: `Pari : ${dateLabels} · Jour local : ${localDateLabel}${timeZone ? ` (${timeZone})` : ' · Fuseau de la station indisponible'}.` }
+    } else if (!marketMatchesToday) {
+      const allPast = dates.every(date => date! < localDate)
+      warning = { title: allPast ? 'Pari sur une date passée' : 'Pari hors du jour local', details: `Pari : ${dateLabels} · Aujourd’hui à ${group.city} : ${localDateLabel} (${timeZone}).` }
+    } else {
+      const snapshot = weatherForGroup(group)
+      const weatherDate = snapshot ? stationDate(new Date(snapshot.fetchedAt), timeZone) : null
+      if (snapshot && weatherDate !== localDate) {
+        // Un flux resté sur la veille ne peut pas alimenter un graphique intitulé « aujourd'hui ».
+        warning = { title: 'Météo hors du jour du pari', details: `Pari et jour local : ${localDateLabel} · Données météo : ${weatherDate ? calendarDateLabel(weatherDate) : 'date inconnue'}.` }
+      }
+    }
+
+    return [group.city, { localDateLabel, marketMatchesToday, canShowChart: !warning, warning }] as const
+  }))
+})
+
+function dateGuard(group: CityGroup) {
+  // Le SSR attend l'horloge du client pour éviter toute comparaison dans le fuseau du serveur.
+  if (!now.value) return null
+  return marketDateGuards.value.get(group.city) || null
+}
+
 // Villes pliées (Set vide = toutes dépliées par défaut)
 const collapsed = ref<Set<string>>(new Set())
 
@@ -1135,7 +1178,13 @@ function getResolutionBadgeForGroup(group: CityGroup) {
           :id="`station-${group.airport || encodeURIComponent(group.city)}`"
           :key="group.city"
           class="station-panel"
+          :class="{ 'station-date-mismatch': dateGuard(group)?.warning }"
         >
+          <HomeMarketDateAlert
+            v-if="dateGuard(group)?.warning"
+            :title="dateGuard(group)!.warning!.title"
+            :details="dateGuard(group)!.warning!.details"
+          />
           <div class="station-header">
             <button
               type="button"
@@ -1180,7 +1229,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     {{ cityTime(group.tz, group.localTime) }}
                   </p>
                   <p
-                    v-if="timeToMidnight(group.tz)"
+                    v-if="dateGuard(group)?.marketMatchesToday && timeToMidnight(group.tz)"
                     class="mt-0.5 text-[11px] font-medium tabular-nums"
                     :class="timeToMidnight(group.tz)!.urgent ? 'text-rose-700' : 'text-amber-700'"
                   >
@@ -1190,7 +1239,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                 </div>
                 <div class="flex items-center gap-1.5">
                   <UBadge
-                    v-if="group.urgentCount > 0"
+                    v-if="dateGuard(group)?.marketMatchesToday && group.urgentCount > 0"
                     color="warning"
                     variant="subtle"
                     class="shrink-0 rounded-sm"
@@ -1338,7 +1387,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                 Prévisions principales indisponibles
               </p>
 
-              <div v-if="sparklineForGroup(group)?.points.length" class="temperature-chart">
+              <div v-if="dateGuard(group)?.canShowChart && sparklineForGroup(group)?.points.length" class="temperature-chart">
                 <div class="weather-chart-heading flex items-center justify-between gap-2 px-1 font-semibold text-slate-900">
                   <span class="uppercase tracking-wide">Température aujourd’hui</span>
                   <div class="weather-chart-summary flex flex-wrap items-center gap-2">
@@ -1685,9 +1734,14 @@ function getResolutionBadgeForGroup(group: CityGroup) {
           v-for="group in groups"
           :id="`station-${group.airport || encodeURIComponent(group.city)}`"
           :key="group.city"
-          :class="{ 'dossier-collapsed': isCollapsed(group.city) }"
+          :class="{ 'dossier-collapsed': isCollapsed(group.city), 'station-date-mismatch': dateGuard(group)?.warning }"
           class="station-panel"
         >
+          <HomeMarketDateAlert
+            v-if="dateGuard(group)?.warning"
+            :title="dateGuard(group)!.warning!.title"
+            :details="dateGuard(group)!.warning!.details"
+          />
           <div class="station-header">
             <span class="dossier-label">DOSSIER / {{ group.airport || group.city }}</span>
             <button
@@ -1733,7 +1787,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     {{ cityTime(group.tz, group.localTime) }}
                   </p>
                   <p
-                    v-if="timeToMidnight(group.tz)"
+                    v-if="dateGuard(group)?.marketMatchesToday && timeToMidnight(group.tz)"
                     class="mt-0.5 text-[11px] font-medium tabular-nums"
                     :class="timeToMidnight(group.tz)!.urgent ? 'text-rose-700' : 'text-amber-700'"
                   >
@@ -1743,7 +1797,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                 </div>
                 <div class="flex items-center gap-1.5">
                   <UBadge
-                    v-if="group.urgentCount > 0"
+                    v-if="dateGuard(group)?.marketMatchesToday && group.urgentCount > 0"
                     color="warning"
                     variant="subtle"
                     class="shrink-0 rounded-sm"
@@ -1891,7 +1945,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                 Prévisions principales indisponibles
               </p>
 
-              <div v-if="sparklineForGroup(group)?.points.length" class="temperature-chart">
+              <div v-if="dateGuard(group)?.canShowChart && sparklineForGroup(group)?.points.length" class="temperature-chart">
                 <div class="weather-chart-heading flex items-center justify-between gap-2 px-1 font-semibold text-slate-900">
                   <span class="uppercase tracking-wide">Température aujourd’hui</span>
                   <div class="weather-chart-summary flex flex-wrap items-center gap-2">

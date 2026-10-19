@@ -15,6 +15,11 @@ body { margin: 0; font-family: var(--font-sans); font-size: 14px; color: #243548
 .market-book .market-outcome { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; min-width: 58px; min-height: 30px; padding: 5px 10px; border-radius: 3px; color: #fff; font-size: 14px; font-weight: 800; line-height: 20px; letter-spacing: .06em; text-transform: uppercase; }
 .market-yes .market-outcome { background: #0f766e; }
 .market-no .market-outcome { background: #be123c; }
+/* L'alerte reste en tête du dossier, même replié, dans les deux dispositions. */
+[data-layout] .station-panel.station-date-mismatch { border-color: #be123c; }
+.market-date-alert { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 12px; padding: 16px; border-bottom: 2px solid #be123c; background: #fff1f2; color: #9f1239; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.market-date-alert-title { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
+.market-date-alert-note { margin-top: 6px; font-weight: 600; }
 .layout-switcher { height: var(--layout-toolbar-height); padding: 0 24px; display: flex; align-items: center; gap: 18px; background: #f8fbfe; border-bottom: 1px solid #cbd9e6; position: sticky; top: 0; z-index: 60; }
 .layout-switcher-label { font-size: 11px; font-weight: 650; color: #526e86; }
 .layout-switcher-buttons { display: flex; gap: 4px; }
