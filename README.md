@@ -12,15 +12,17 @@ Voir [LAYOUTS.md](LAYOUTS.md) pour les différences entre les dispositions et le
 
 ## Prerequis
 
-- Node.js 24.11 ou plus recent
+- Node.js 24 LTS, version 24.22.1 minimum (`.nvmrc` fixe la version de développement et de CI ; pnpm refuse les versions incompatibles)
 - pnpm, via Corepack recommande
 
 ```bash
 corepack enable
-corepack prepare pnpm@12.8.1 --activate
+corepack prepare pnpm@12.14.0 --activate
 ```
 
 Le gestionnaire de paquets officiel est `pnpm`. Le fichier de lock a conserver est [pnpm-lock.yaml](pnpm-lock.yaml). Ne pas utiliser `npm install`, qui genere un `package-lock.json` concurrent.
+
+La [mise à jour de sécurité Node.js du 21 octobre 2026](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases) impose de mettre à jour le moteur local et celui du build. Pour un déploiement avec serveur Nuxt, vérifier aussi le correctif Node utilisé par l'hébergeur et redéployer. Un déploiement purement statique n'exécute pas Node lors des visites.
 
 Les dependances directes utilisent des versions stables. TypeScript reste en `6.0.3`, derniere version compatible avec `typescript-eslint` et `vue-tsc`. `@tanstack/table-core` reste en `8.21.3` pour correspondre a l'API utilisee par Nuxt UI. Certaines dependances transitives du framework (notamment `h3`, `ofetch` et `unenv`) sont imposees en prerelease par les versions stables de Nuxt et Nitro.
 
