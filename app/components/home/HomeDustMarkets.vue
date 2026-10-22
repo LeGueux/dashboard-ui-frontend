@@ -4,6 +4,8 @@
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { WeatherObservation, WeatherSnapshot, WeatherMarketForecast } from '~/composables/useDustMarkets'
 import { calendarDateLabel, marketCalendarDate, stationDate } from '~/utils/marketDate'
+import { weatherForMarketDate } from '~/utils/marketWeather'
+import type { MarketWeatherSnapshot } from '~/utils/marketWeather'
 
 const { dashboardLayout } = useDashboardLayout()
 
@@ -302,9 +304,10 @@ function dedupeMarkets(markets: DustMarket[] = []) {
 }
 
 interface CityGroup {
+  key: string
   city: string
   airport: string
-  peakLabel: string | null
+  date: string | null
   localTime: string | null
   dateLabel: string | null
   tz: string | null
@@ -314,13 +317,45 @@ interface CityGroup {
 }
 
 function weatherForGroup(group: CityGroup) {
-  return props.weatherSnapshots[group.airport] || null
+  return groupWeather.value[group.key] || null
+}
+
+function calculatePeakLabel(group: CityGroup) {
+  const snapshot = weatherForGroup(group)
+  if (!snapshot) return null
+  // Le pic non daté du bot peut provenir d'une source bloquée sur la veille.
+  const measured = (snapshot.recentObservations || []).filter(point => point.temperature != null && Number.isFinite(point.temperature))
+  const predicted = (snapshot.hourly || []).filter(point => point.temperature != null && Number.isFinite(point.temperature))
+  const points = measured.length ? measured : predicted
+  const peak = points.reduce<(typeof points)[number] | null>((max, point) => !max || point.temperature! > max.temperature! ? point : max, null)
+  return peak ? `${weatherTemperature(peak.temperature, snapshot.unit)} à ${weatherHour(peak.timeLocal, group.tz)} (${measured.length ? 'mesuré' : 'prévu'})` : null
+}
+
+function peakLabelForGroup(group: CityGroup) {
+  return groupPeakLabels.value[group.key] || null
 }
 
 function forecastForGroup(group: CityGroup) {
+  // Le résumé transmis par le bot porte sur son jour de collecte, sans historique par marché.
+  const snapshot = props.weatherSnapshots[group.airport]
+  if (!snapshot || !dateGuard(group)?.marketMatchesToday || group.date !== stationDate(new Date(snapshot.fetchedAt), group.tz)) return null
   const marketIds = new Set(group.markets.map(market => String(market.id || market.slug || '')))
-  return props.weatherMarketForecasts
+  const forecast = props.weatherMarketForecasts
     .find(forecast => forecast.airport === group.airport && marketIds.has(String(forecast.marketId || ''))) || null
+  const datedWeather = weatherForGroup(group)
+  if (!forecast || !datedWeather) return null
+  // Le résumé ne doit pas réintroduire une température courante datée de la veille.
+  const temperatures = [...(datedWeather.hourly || []).map(point => point.temperature), datedWeather.current?.temperature]
+    .filter((value): value is number => value != null && Number.isFinite(value))
+  if (!temperatures.length) return null
+  const forecastMax = Math.max(...temperatures)
+  const margin = forecast.threshold === null ? null : Math.round((forecastMax - forecast.threshold) * 10) / 10
+  return {
+    ...forecast,
+    forecastMax,
+    margin,
+    reason: `Max prévu ${forecastMax.toFixed(1)}°${datedWeather.unit}${margin === null ? '' : `, marge ${margin >= 0 ? '+' : ''}${margin.toFixed(1)}°${datedWeather.unit}`}`
+  }
 }
 
 function weatherTemperature(value: number | null | undefined, unit: 'C' | 'F' = 'C') {
@@ -388,7 +423,7 @@ function hasMetarObservations(snapshot: WeatherSnapshot) {
   return snapshot.recentObservations?.some(observation => observation.source === 'metar') || false
 }
 
-function calculateDailyMaximumTemperature(snapshot: WeatherSnapshot) {
+function calculateDailyMaximumTemperature(snapshot: MarketWeatherSnapshot) {
   const dayStart = weatherDayStart(snapshot)
   if (dayStart === null) return null
 
@@ -411,15 +446,17 @@ function calculateDailyMaximumTemperature(snapshot: WeatherSnapshot) {
 // Chaque relevé METAR consulte le même maximum ; il n'est recalculé qu'à l'arrivée de nouvelles données.
 const dailyMaximumCache = computed(() => {
   const cache: Record<string, number | null> = {}
-  for (const snapshot of Object.values(props.weatherSnapshots)) cache[snapshot.airport] = calculateDailyMaximumTemperature(snapshot)
+  for (const snapshot of Object.values(groupWeather.value)) {
+    if (snapshot) cache[`${snapshot.airport}:${snapshot.marketDate}`] = calculateDailyMaximumTemperature(snapshot)
+  }
   return cache
 })
 
-function dailyMaximumTemperature(snapshot: WeatherSnapshot) {
-  return dailyMaximumCache.value[snapshot.airport] ?? null
+function dailyMaximumTemperature(snapshot: MarketWeatherSnapshot) {
+  return dailyMaximumCache.value[`${snapshot.airport}:${snapshot.marketDate}`] ?? null
 }
 
-function isDailyMaximumTemperature(temperature: number | null, snapshot: WeatherSnapshot) {
+function isDailyMaximumTemperature(temperature: number | null, snapshot: MarketWeatherSnapshot) {
   const maximum = dailyMaximumTemperature(snapshot)
   return maximum !== null && temperature !== null && Number(temperature) === maximum
 }
@@ -453,9 +490,8 @@ function weatherAxisLabel(localMinute: number) {
   return `${String(date.getUTCHours()).padStart(2, '0')}:00`
 }
 
-function weatherDayStart(snapshot: WeatherSnapshot) {
-  const localMinute = weatherLocalMinute(snapshot.fetchedAt, snapshot.tz)
-  return localMinute === null ? null : Math.floor(localMinute / (24 * 60)) * (24 * 60)
+function weatherDayStart(snapshot: MarketWeatherSnapshot) {
+  return Date.parse(`${snapshot.marketDate}T00:00:00Z`) / 60_000
 }
 
 const compactWeatherChart = useMediaQuery('(max-width: 767px)')
@@ -474,9 +510,9 @@ function weatherModelStyle(index: number) {
   ][index % 3]!
 }
 
-function weatherBets(snapshot: WeatherSnapshot) {
+function weatherBets(snapshot: WeatherSnapshot, markets: DustMarket[]) {
   const unique = new Map<string, { title: string, outcome: string, temperatures: number[] }>()
-  for (const market of props.markets.filter(market => market.airport === snapshot.airport)) {
+  for (const market of markets) {
     if (hideOnly999Asks.value && hasOnly999Asks(market)) continue
     const forecast = props.weatherMarketForecasts.find(item => item.airport === snapshot.airport && String(item.marketId) === String(market.id || market.slug))
     const title = market.groupItemTitle?.trim() || ''
@@ -504,9 +540,9 @@ function betTemperatureGap(temperatures: number[], reference: number | null | un
   }).join(' / ')
 }
 
-function sparklinePaths(snapshot: WeatherSnapshot) {
-  const bets = weatherBets(snapshot)
-  const chartWidth = weatherChartWidths.value[snapshot.airport] || (compactWeatherChart.value ? 320 : 420)
+function sparklinePaths(snapshot: MarketWeatherSnapshot, group: CityGroup) {
+  const bets = weatherBets(snapshot, group.markets)
+  const chartWidth = weatherChartWidths.value[group.key] || (compactWeatherChart.value ? 320 : 420)
   const chartLeft = 48
   const chartRight = chartWidth - 14
   const plotWidth = chartRight - chartLeft
@@ -666,18 +702,18 @@ function sparklinePaths(snapshot: WeatherSnapshot) {
   }
 }
 
-// Mémoïse le calcul (coûteux) des graphiques par aéroport : ne se recalcule que
-// si la météo, les bets ou la largeur disponible changent, pas à chaque tick de l'horloge.
+// Chaque date possède son graphique et ses seuils ; aucun cache n'est partagé entre deux jours.
 const sparklineCache = computed(() => {
   const cache: Record<string, ReturnType<typeof sparklinePaths>> = {}
-  for (const [airport, snapshot] of Object.entries(props.weatherSnapshots || {})) {
-    if (snapshot) cache[airport] = sparklinePaths(snapshot)
+  for (const group of groups.value) {
+    const snapshot = weatherForGroup(group)
+    if (snapshot) cache[group.key] = sparklinePaths(snapshot, group)
   }
   return cache
 })
 
 function sparklineForGroup(group: CityGroup) {
-  return sparklineCache.value[group.airport] || null
+  return sparklineCache.value[group.key] || null
 }
 
 function temperatureTrend(snapshot: WeatherSnapshot) {
@@ -761,21 +797,30 @@ const groups = computed<CityGroup[]>(() => {
 
   for (const market of filteredCards) {
     const city = market.city || 'Ville inconnue'
-    if (!map.has(city)) {
-      map.set(city, {
+    const airport = market.airport || ''
+    const snapshot = props.weatherSnapshots[airport]
+    const tz = market.airportData?.tz || snapshot?.tz || null
+    // La collecte fournit une année stable au SSR pour les dates courtes de Polymarket.
+    const collectionDate = snapshot ? stationDate(new Date(snapshot.fetchedAt), tz) : null
+    const referenceDate = collectionDate || (coarseNow.value ? stationDate(coarseNow.value, tz) : null)
+    const date = marketCalendarDate(market.date, referenceDate || '', market.slug)
+    const key = JSON.stringify([city, airport, date || market.date || 'date-inconnue'])
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
         city,
-        airport: market.airport || '',
-        peakLabel: market.peakLabel || null,
+        airport,
+        date,
         localTime: market.localTime || null,
-        dateLabel: formatBetDateLabel(market.date),
-        tz: market.airportData?.tz || null,
+        dateLabel: date ? calendarDateLabel(date) : formatBetDateLabel(market.date),
+        tz,
         minRemainingSeconds: Number.POSITIVE_INFINITY,
         urgentCount: 0,
         markets: []
       })
     }
 
-    const group = map.get(city)!
+    const group = map.get(key)!
     group.markets.push(market)
 
     if (!group.dateLabel && market.date) {
@@ -794,7 +839,7 @@ const groups = computed<CityGroup[]>(() => {
     const bBest = Math.min(...b.markets.map(bestAskCents))
     if (aBest !== bBest) return aBest - bBest
 
-    return a.city.localeCompare(b.city)
+    return a.city.localeCompare(b.city) || (a.date || '').localeCompare(b.date || '')
   })
 
   for (const group of list) {
@@ -804,45 +849,44 @@ const groups = computed<CityGroup[]>(() => {
   return list
 })
 
+const groupWeather = computed(() => Object.fromEntries(groups.value.map(group => [
+  group.key,
+  weatherForMarketDate(props.weatherSnapshots[group.airport], group.date, group.tz)
+])))
+
+const groupPeakLabels = computed(() => Object.fromEntries(groups.value.map(group => [group.key, calculatePeakLabel(group)])))
+
 // La clé ne change qu'au minuit d'une station ; les contrôles ne suivent pas chaque seconde de l'horloge.
 const stationDays = computed(() => JSON.stringify(groups.value.map(group => [
-  group.city,
-  now.value ? stationDate(now.value, group.tz || weatherForGroup(group)?.tz) : null
+  group.key,
+  now.value ? stationDate(now.value, group.tz) : null
 ])))
 
 const marketDateGuards = computed(() => {
   const days = new Map<string, string | null>(JSON.parse(stationDays.value))
   return new Map(groups.value.map((group) => {
-    const localDate = days.get(group.city)
-    const timeZone = group.tz || weatherForGroup(group)?.tz
-    const dates = group.markets.map(market => localDate ? marketCalendarDate(market.date, localDate, market.slug) : null)
-    const dateLabels = [...new Set(dates.map((date, index) => date ? calendarDateLabel(date) : group.markets[index]?.date || 'inconnue'))].join(', ')
+    const localDate = days.get(group.key)
+    const timeZone = group.tz
+    const dateLabel = group.dateLabel || 'inconnue'
     const localDateLabel = localDate ? calendarDateLabel(localDate) : 'inconnue'
-    const marketMatchesToday = !!localDate && dates.length > 0 && dates.every(date => date === localDate)
+    const marketMatchesToday = !!localDate && group.date === localDate
+    const snapshot = weatherForGroup(group)
     let warning = null
 
-    if (!localDate || dates.some(date => date === null)) {
-      warning = { title: 'Date du pari non vérifiable', details: `Pari : ${dateLabels} · Jour local : ${localDateLabel}${timeZone ? ` (${timeZone})` : ' · Fuseau de la station indisponible'}.` }
-    } else if (!marketMatchesToday) {
-      const allPast = dates.every(date => date! < localDate)
-      warning = { title: allPast ? 'Pari sur une date passée' : 'Pari hors du jour local', details: `Pari : ${dateLabels} · Aujourd’hui à ${group.city} : ${localDateLabel} (${timeZone}).` }
-    } else {
-      const snapshot = weatherForGroup(group)
-      const weatherDate = snapshot ? stationDate(new Date(snapshot.fetchedAt), timeZone) : null
-      if (snapshot && weatherDate !== localDate) {
-        // Un flux resté sur la veille ne peut pas alimenter un graphique intitulé « aujourd'hui ».
-        warning = { title: 'Météo hors du jour du pari', details: `Pari et jour local : ${localDateLabel} · Données météo : ${weatherDate ? calendarDateLabel(weatherDate) : 'date inconnue'}.` }
-      }
+    if (!group.date || !timeZone) {
+      warning = { title: 'Date du pari non vérifiable', details: `Pari : ${dateLabel} · Jour local : ${localDateLabel}${timeZone ? ` (${timeZone})` : ' · Fuseau de la station indisponible'}.` }
+    } else if (!snapshot && props.weatherSnapshots[group.airport]) {
+      warning = { title: 'Météo indisponible pour cette date', details: `Pari : ${dateLabel} · Aucun relevé ni prévision disponible pour cette journée à ${group.city} (${timeZone}).` }
     }
 
-    return [group.city, { localDateLabel, marketMatchesToday, canShowChart: !warning, warning }] as const
+    return [group.key, { localDateLabel, marketMatchesToday, canShowChart: !!snapshot && !warning, warning }] as const
   }))
 })
 
 function dateGuard(group: CityGroup) {
   // Le SSR attend l'horloge du client pour éviter toute comparaison dans le fuseau du serveur.
   if (!now.value) return null
-  return marketDateGuards.value.get(group.city) || null
+  return marketDateGuards.value.get(group.key) || null
 }
 
 // Villes pliées (Set vide = toutes dépliées par défaut)
@@ -1161,13 +1205,13 @@ function getResolutionBadgeForGroup(group: CityGroup) {
       <div v-if="!loading && groups.length" class="station-overview" aria-label="Aperçu de toutes les villes">
         <a
           v-for="group in groups"
-          :key="group.city"
-          :href="`#station-${group.airport || encodeURIComponent(group.city)}`"
+          :key="group.key"
+          :href="`#station-${encodeURIComponent(group.key)}`"
           class="overview-reading"
         >
-          <div class="overview-city"><strong>{{ group.city }}</strong><span>{{ group.airport }}</span></div>
+          <div class="overview-city"><strong>{{ group.city }}<span class="block">{{ group.dateLabel || 'Date inconnue' }}</span></strong><span>{{ group.airport }}</span></div>
           <span class="overview-temperature">{{ weatherForGroup(group) ? weatherTemperature(weatherForGroup(group)!.current?.temperature, weatherForGroup(group)!.unit) : '—' }}</span>
-          <span class="overview-caption">{{ group.peakLabel ? `Pic ${group.peakLabel}` : 'Pic non disponible' }}</span>
+          <span class="overview-caption">{{ peakLabelForGroup(group) ? `Pic ${peakLabelForGroup(group)}` : 'Pic non disponible' }}</span>
           <span class="overview-clock">{{ cityTime(group.tz, group.localTime) }}</span>
         </a>
       </div>
@@ -1175,8 +1219,8 @@ function getResolutionBadgeForGroup(group: CityGroup) {
       <div v-if="!loading && groups.length" class="station-grid">
         <section
           v-for="group in groups"
-          :id="`station-${group.airport || encodeURIComponent(group.city)}`"
-          :key="group.city"
+          :id="`station-${group.key}`"
+          :key="group.key"
           class="station-panel"
           :class="{ 'station-date-mismatch': dateGuard(group)?.warning }"
         >
@@ -1189,12 +1233,12 @@ function getResolutionBadgeForGroup(group: CityGroup) {
             <button
               type="button"
               class="flex w-full min-w-0 flex-1 items-center justify-between gap-2.5 rounded-md text-left transition hover:bg-slate-50"
-              :aria-expanded="!isCollapsed(group.city)"
-              @click="toggleCity(group.city)"
+              :aria-expanded="!isCollapsed(group.key)"
+              @click="toggleCity(group.key)"
             >
               <div class="flex min-w-0 items-center gap-3">
                 <UIcon
-                  :name="isCollapsed(group.city) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
+                  :name="isCollapsed(group.key) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
                   class="size-4 shrink-0 text-slate-500"
                 />
                 <div class="min-w-0">
@@ -1214,8 +1258,8 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     </span>
                   </h3>
                   <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                    <p v-if="group.peakLabel" class="break-words text-[11px] text-slate-500">
-                      Pic {{ group.peakLabel }}
+                    <p v-if="peakLabelForGroup(group)" class="break-words text-[11px] text-slate-500">
+                      Pic {{ peakLabelForGroup(group) }}
                     </p>
                     <span v-if="group.dateLabel" class="inline-flex items-center rounded-sm bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
                       {{ group.dateLabel }}
@@ -1287,7 +1331,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
           </div>
 
           <div
-            v-if="!isCollapsed(group.city)"
+            v-if="!isCollapsed(group.key)"
             class="station-body"
           >
             <div
@@ -1305,7 +1349,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
               class="flex items-center gap-2 rounded-sm border border-dashed border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] text-slate-700"
             >
               <UIcon name="i-lucide-cloud-off" class="size-3.5 shrink-0" />
-              Meteo indisponible
+              Météo indisponible pour le {{ group.dateLabel || 'jour du pari' }}
             </div>
 
             <div
@@ -1323,6 +1367,9 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   <div>
                     <p class="current-temperature">
                       {{ weatherTemperature(weatherForGroup(group)!.current?.temperature, weatherForGroup(group)!.unit) }}
+                    </p>
+                    <p v-if="weatherForGroup(group)!.observedAt" class="mt-1 text-[9px] text-slate-500">
+                      Dernière valeur à {{ weatherHour(weatherForGroup(group)!.observedAt, group.tz) }}
                     </p>
                     <p class="mt-1 max-w-40 text-[10px] font-medium leading-tight text-slate-700" :title="weatherConditionLabel(weatherForGroup(group)!.current?.condition)">
                       {{ weatherConditionLabel(weatherForGroup(group)!.current?.condition) }}
@@ -1389,7 +1436,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
 
               <div v-if="dateGuard(group)?.canShowChart && sparklineForGroup(group)?.points.length" class="temperature-chart">
                 <div class="weather-chart-heading flex items-center justify-between gap-2 px-1 font-semibold text-slate-900">
-                  <span class="uppercase tracking-wide">Température aujourd’hui</span>
+                  <span class="uppercase tracking-wide">Température du {{ group.dateLabel }}</span>
                   <div class="weather-chart-summary flex flex-wrap items-center gap-2">
                     <span v-if="weatherForGroup(group)!.forecastModels?.length" class="font-mono tabular-nums text-sky-700">
                       {{ weatherForGroup(group)!.forecastModels!.length }} modèles · écart {{ weatherTemperature(sparklineForGroup(group)!.spreadMax, weatherForGroup(group)!.unit) }}
@@ -1410,7 +1457,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   :airport="group.airport"
                   :unit="weatherForGroup(group)!.unit"
                   :time-zone="group.tz"
-                  @resize="width => setWeatherChartWidth(group.airport, width)"
+                  @resize="width => setWeatherChartWidth(group.key, width)"
                 />
                 <div class="weather-chart-legend flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-1 py-2 font-medium text-slate-900">
                   <div class="weather-chart-series flex flex-wrap items-center gap-2">
@@ -1438,7 +1485,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                         {{ bet.id }} · {{ bet.outcome }} · {{ bet.title }}
                       </p>
                       <p class="mt-0.5 font-mono tabular-nums">
-                        <span>Écart actuel {{ betTemperatureGap(bet.temperatures, weatherForGroup(group)!.current?.temperature, weatherForGroup(group)!.unit) }}</span>
+                        <span>Écart à la dernière valeur {{ betTemperatureGap(bet.temperatures, weatherForGroup(group)!.current?.temperature, weatherForGroup(group)!.unit) }}</span>
                         <span>Écart au max {{ betTemperatureGap(bet.temperatures, dailyMaximumTemperature(weatherForGroup(group)!), weatherForGroup(group)!.unit) }}</span>
                       </p>
                     </div>
@@ -1474,7 +1521,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                         <span
                           v-if="isDailyMaximumTemperature(observation.temperature, weatherForGroup(group)!)"
                           class="rounded border border-purple-800/30 bg-purple-100 px-1 py-0.5 text-[7px] font-bold leading-none text-purple-800"
-                          title="Maximum relevé aujourd’hui"
+                          title="Maximum relevé sur cette journée"
                         >MAX</span>
                         <span
                           v-if="observation.temperaturePrecision === 'tenth'"
@@ -1715,16 +1762,16 @@ function getResolutionBadgeForGroup(group: CityGroup) {
         Aucun market dust n'est encore disponible. Le bot Discord devra en envoyer pour alimenter cette vue.
       </div>
 
-      <div v-if="!loading && groups.length" class="station-overview" aria-label="Accéder au dossier d’une ville">
+      <div v-if="!loading && groups.length" class="station-overview" aria-label="Accéder au dossier d’une ville et d’une date">
         <a
           v-for="group in groups"
-          :key="group.city"
-          :href="`#station-${group.airport || encodeURIComponent(group.city)}`"
+          :key="group.key"
+          :href="`#station-${encodeURIComponent(group.key)}`"
           class="overview-reading"
         >
-          <div class="overview-city"><strong>{{ group.city }}</strong><span>{{ group.airport }}</span></div>
+          <div class="overview-city"><strong>{{ group.city }}<span class="block">{{ group.dateLabel || 'Date inconnue' }}</span></strong><span>{{ group.airport }}</span></div>
           <span class="overview-temperature">{{ weatherForGroup(group) ? weatherTemperature(weatherForGroup(group)!.current?.temperature, weatherForGroup(group)!.unit) : '—' }}</span>
-          <span class="overview-caption">{{ group.peakLabel ? `Pic ${group.peakLabel}` : 'Pic non disponible' }}</span>
+          <span class="overview-caption">{{ peakLabelForGroup(group) ? `Pic ${peakLabelForGroup(group)}` : 'Pic non disponible' }}</span>
           <span class="overview-clock">{{ cityTime(group.tz, group.localTime) }}</span>
         </a>
       </div>
@@ -1732,9 +1779,9 @@ function getResolutionBadgeForGroup(group: CityGroup) {
       <div v-if="!loading && groups.length" class="station-grid">
         <section
           v-for="group in groups"
-          :id="`station-${group.airport || encodeURIComponent(group.city)}`"
-          :key="group.city"
-          :class="{ 'dossier-collapsed': isCollapsed(group.city), 'station-date-mismatch': dateGuard(group)?.warning }"
+          :id="`station-${group.key}`"
+          :key="group.key"
+          :class="{ 'dossier-collapsed': isCollapsed(group.key), 'station-date-mismatch': dateGuard(group)?.warning }"
           class="station-panel"
         >
           <HomeMarketDateAlert
@@ -1747,12 +1794,12 @@ function getResolutionBadgeForGroup(group: CityGroup) {
             <button
               type="button"
               class="flex w-full min-w-0 flex-1 items-center justify-between gap-2.5 rounded-md text-left transition hover:bg-slate-50"
-              :aria-expanded="!isCollapsed(group.city)"
-              @click="toggleCity(group.city)"
+              :aria-expanded="!isCollapsed(group.key)"
+              @click="toggleCity(group.key)"
             >
               <div class="flex min-w-0 items-center gap-3">
                 <UIcon
-                  :name="isCollapsed(group.city) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
+                  :name="isCollapsed(group.key) ? 'i-lucide-chevron-right' : 'i-lucide-chevron-down'"
                   class="size-4 shrink-0 text-slate-500"
                 />
                 <div class="min-w-0">
@@ -1772,8 +1819,8 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                     </span>
                   </h3>
                   <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                    <p v-if="group.peakLabel" class="break-words text-[11px] text-slate-500">
-                      Pic {{ group.peakLabel }}
+                    <p v-if="peakLabelForGroup(group)" class="break-words text-[11px] text-slate-500">
+                      Pic {{ peakLabelForGroup(group) }}
                     </p>
                     <span v-if="group.dateLabel" class="inline-flex items-center rounded-sm bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
                       {{ group.dateLabel }}
@@ -1850,6 +1897,9 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                 <p class="current-temperature">
                   {{ weatherTemperature(weatherForGroup(group)!.current?.temperature, weatherForGroup(group)!.unit) }}
                 </p>
+                <p v-if="weatherForGroup(group)!.observedAt" class="mt-1 text-[9px] text-slate-500">
+                  Dernière valeur à {{ weatherHour(weatherForGroup(group)!.observedAt, group.tz) }}
+                </p>
                 <p class="mt-1 max-w-40 text-[10px] font-medium leading-tight text-slate-700" :title="weatherConditionLabel(weatherForGroup(group)!.current?.condition)">
                   {{ weatherConditionLabel(weatherForGroup(group)!.current?.condition) }}
                 </p>
@@ -1859,7 +1909,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
           </div>
 
           <div
-            v-if="!isCollapsed(group.city)"
+            v-if="!isCollapsed(group.key)"
             class="station-body"
           >
             <div
@@ -1877,7 +1927,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
               class="flex items-center gap-2 rounded-sm border border-dashed border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] text-slate-700"
             >
               <UIcon name="i-lucide-cloud-off" class="size-3.5 shrink-0" />
-              Meteo indisponible
+              Météo indisponible pour le {{ group.dateLabel || 'jour du pari' }}
             </div>
 
             <div
@@ -1947,7 +1997,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
 
               <div v-if="dateGuard(group)?.canShowChart && sparklineForGroup(group)?.points.length" class="temperature-chart">
                 <div class="weather-chart-heading flex items-center justify-between gap-2 px-1 font-semibold text-slate-900">
-                  <span class="uppercase tracking-wide">Température aujourd’hui</span>
+                  <span class="uppercase tracking-wide">Température du {{ group.dateLabel }}</span>
                   <div class="weather-chart-summary flex flex-wrap items-center gap-2">
                     <span v-if="weatherForGroup(group)!.forecastModels?.length" class="font-mono tabular-nums text-sky-700">
                       {{ weatherForGroup(group)!.forecastModels!.length }} modèles · écart {{ weatherTemperature(sparklineForGroup(group)!.spreadMax, weatherForGroup(group)!.unit) }}
@@ -1968,7 +2018,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                   :airport="group.airport"
                   :unit="weatherForGroup(group)!.unit"
                   :time-zone="group.tz"
-                  @resize="width => setWeatherChartWidth(group.airport, width)"
+                  @resize="width => setWeatherChartWidth(group.key, width)"
                 />
                 <div class="weather-chart-legend flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-1 py-2 font-medium text-slate-900">
                   <div class="weather-chart-series flex flex-wrap items-center gap-2">
@@ -1996,7 +2046,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                         {{ bet.id }} · {{ bet.outcome }} · {{ bet.title }}
                       </p>
                       <p class="mt-0.5 font-mono tabular-nums">
-                        <span>Écart actuel {{ betTemperatureGap(bet.temperatures, weatherForGroup(group)!.current?.temperature, weatherForGroup(group)!.unit) }}</span>
+                        <span>Écart à la dernière valeur {{ betTemperatureGap(bet.temperatures, weatherForGroup(group)!.current?.temperature, weatherForGroup(group)!.unit) }}</span>
                         <span>Écart au max {{ betTemperatureGap(bet.temperatures, dailyMaximumTemperature(weatherForGroup(group)!), weatherForGroup(group)!.unit) }}</span>
                       </p>
                     </div>
@@ -2032,7 +2082,7 @@ function getResolutionBadgeForGroup(group: CityGroup) {
                         <span
                           v-if="isDailyMaximumTemperature(observation.temperature, weatherForGroup(group)!)"
                           class="rounded border border-purple-800/30 bg-purple-100 px-1 py-0.5 text-[7px] font-bold leading-none text-purple-800"
-                          title="Maximum relevé aujourd’hui"
+                          title="Maximum relevé sur cette journée"
                         >MAX</span>
                         <span
                           v-if="observation.temperaturePrecision === 'tenth'"

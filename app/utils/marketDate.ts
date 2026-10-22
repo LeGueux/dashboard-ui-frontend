@@ -39,6 +39,7 @@ export function marketCalendarDate(value: string | null | undefined, localDate: 
   if (explicitYear) return calendarDate(Number(explicitYear), month, day)
 
   // Polymarket fournit aussi « October 18 » : le jour le plus proche gère le passage décembre/janvier.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(localDate)) return null
   const year = Number(localDate.slice(0, 4))
   return [year - 1, year, year + 1]
     .map(candidate => calendarDate(candidate, month, day))

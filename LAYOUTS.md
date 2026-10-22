@@ -9,6 +9,8 @@ Le sélecteur reste accessible en haut de la page des marchés : boutons sur PC,
 
 Les présentations des marchés partagent les calculs et les flux existants. Changer de mode ne remonte pas le composant du tableau : les filtres, conversions et villes repliées restent en place. Le répertoire conserve ses fonctions de recherche, de filtrage et de regroupement par fuseau. Les filtres de page gardent leur comportement initial lors d'une navigation vers une autre page ou d'un rechargement.
 
+Les marchés sont regroupés par ville, station et date du pari. Une ville avec des paris sur deux jours dispose de deux dossiers et de deux entrées de navigation datées, repliables séparément. Chaque dossier utilise uniquement les relevés, prévisions, maxima et seuils de son jour civil dans le fuseau de la station. Si le dernier flux ne contient plus de données pour une date passée, ce dossier affiche une météo indisponible ; les valeurs du jour courant ne les remplacent pas. Le frontend n'archive pas les anciennes collectes météo.
+
 Les styles propres à chaque disposition vivent dans `app/assets/css/layouts/` et sont limités par `[data-layout]`. La palette commune et le sélecteur vivent dans `app/assets/css/main.css`. La liste des choix est dans `app/composables/useDashboardLayout.ts` et les templates conditionnels des marchés sont dans `HomeDustMarkets.vue`. La page `weather-links.vue` contient un seul template ; son layout dédié `app/layouts/directory.vue` applique Dossiers dès le rendu serveur, sans lire ni écrire la préférence des marchés. La hauteur réservée au sélecteur y est nulle pour replacer la navigation et l'index des fuseaux.
 
 ## Utilisation et configuration
