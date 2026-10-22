@@ -1,4 +1,4 @@
-import type { WeatherSnapshot } from '../composables/useDustMarkets'
+import type { WeatherSnapshot } from '../types/dust'
 import { stationDate } from './marketDate'
 
 export type MarketWeatherSnapshot = WeatherSnapshot & { marketDate: string }

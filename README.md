@@ -75,19 +75,22 @@ Redemarrer les services apres modification de leurs variables d'environnement. L
 ```bash
 pnpm run typecheck
 pnpm run lint
+pnpm run test:dust
 pnpm run build
 pnpm run preview
 ```
 
-Note : `pnpm run lint` peut encore remonter des regles de formatage historiques dans certains fichiers Vue. `pnpm run typecheck` est la verification principale pour les changements fonctionnels.
+`test:dust` exécute les tests métier et de réactivité sans démarrer de serveur ni contacter une API. Il utilise le lanceur de tests intégré à Node.js, sans dépendance supplémentaire.
 
 ## Structure principale
 
 - [app/pages/index.vue](app/pages/index.vue) : page principale du dashboard dust
-- [app/components/home/HomeDustMarkets.vue](app/components/home/HomeDustMarkets.vue) : cartes de marches et raccourcis meteo
+- [app/components/home/HomeDustMarkets.vue](app/components/home/HomeDustMarkets.vue) : orchestration du tableau et conservation des filtres et panneaux repliés
 - [app/pages/weather-links.vue](app/pages/weather-links.vue) : wiki des liens meteo par aeroport
 - [app/composables/useDustMarkets.ts](app/composables/useDustMarkets.ts) : chargement des marches depuis l'ingest backend
 - [app/composables/useWeatherLinks.ts](app/composables/useWeatherLinks.ts) : chargement du wiki meteo
+
+Le détail des composants, des dépendances réactives et des validations du tableau figure dans [docs/DUST_ARCHITECTURE.md](docs/DUST_ARCHITECTURE.md).
 
 ## Deploiement
 
