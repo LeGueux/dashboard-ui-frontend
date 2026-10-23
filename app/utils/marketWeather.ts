@@ -1,7 +1,10 @@
 import type { WeatherSnapshot } from '../types/dust'
 import { stationDate } from './marketDate'
 
-export type MarketWeatherSnapshot = WeatherSnapshot & { marketDate: string }
+export type MarketWeatherSnapshot = WeatherSnapshot & {
+  marketDate: string
+  chartForecasts?: Pick<WeatherSnapshot, 'hourly' | 'forecastModels' | 'sparkline'>
+}
 
 export function weatherCalendarDate(value: string | null | undefined, timeZone?: string | null) {
   if (!value) return null
@@ -32,6 +35,21 @@ export function weatherForMarketDate(snapshot: WeatherSnapshot | null | undefine
       : undefined
   if (!current && !recentObservations.length && !hourly.length && !forecastModels.length && !sparkline.length && !snapshot.disabled) return null
 
+  // L'aperçu du lendemain alimente uniquement les courbes, jamais les résumés du jour.
+  // Il ne suffit pas à rendre disponible une journée sans relevé ni prévision propre.
+  const nextDay = Date.parse(`${date}T00:00:00Z`) + 24 * 60 * 60 * 1000
+  const nextDate = Number.isFinite(nextDay) ? new Date(nextDay).toISOString().slice(0, 10) : null
+  const withinChartDates = (point: { timeLocal: string }) => {
+    const pointDate = weatherCalendarDate(point.timeLocal, timeZone)
+    return pointDate === date || pointDate === nextDate
+  }
+  const chartForecasts = {
+    hourly: (snapshot.hourly || []).filter(withinChartDates),
+    forecastModels: (snapshot.forecastModels || []).map(model => ({ ...model, hourly: model.hourly.filter(withinChartDates) }))
+      .filter(model => model.hourly.length),
+    sparkline: (snapshot.sparkline || []).filter(point => point.kind === 'forecast' && withinChartDates(point))
+  }
+
   return {
     ...snapshot,
     tz: timeZone,
@@ -39,6 +57,7 @@ export function weatherForMarketDate(snapshot: WeatherSnapshot | null | undefine
     current,
     observedAt: currentMatchesDate ? snapshot.observedAt : latestObservation?.timeLocal,
     recentObservations,
+    chartForecasts,
     hourly,
     forecastModels,
     sparkline

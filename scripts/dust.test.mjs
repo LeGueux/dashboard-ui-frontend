@@ -108,7 +108,7 @@ test('les courbes restent finies à température constante, se redimensionnent e
   assert.ok(desktop.chartRight > mobile.chartRight)
   assert.ok(desktop.points.every(point => Number.isFinite(point.x) && Number.isFinite(point.y)))
   assert.equal(JSON.stringify(desktop).includes('NaN'), false)
-  assert.equal(buildWeatherChart({ ...data, hourly: [], sparkline: [] }, [], [], 320).points.length, 0)
+  assert.equal(buildWeatherChart({ ...data, hourly: [], sparkline: [], chartForecasts: undefined }, [], [], 320).points.length, 0)
 })
 
 test('les ticks conservent les objets groupes et n’invalident pas la météo ; un filtre et un flux restent réactifs', () => {

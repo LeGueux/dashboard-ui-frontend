@@ -94,8 +94,8 @@ const trend = computed(() => props.weather ? temperatureTrend(props.weather) : n
       <div class="weather-chart-heading flex items-center justify-between gap-2 px-1 font-semibold text-slate-900">
         <span class="uppercase tracking-wide">Température du {{ group.dateLabel }}</span>
         <div class="weather-chart-summary flex flex-wrap items-center gap-2">
-          <span v-if="weather.forecastModels?.length" class="font-mono tabular-nums text-sky-700">
-            {{ weather.forecastModels!.length }} modèles · écart {{ weatherTemperature(chart!.spreadMax, weather.unit) }}
+          <span v-if="chart!.modelPaths.length" class="font-mono tabular-nums text-sky-700">
+            {{ chart!.modelPaths.length }} modèles · écart {{ weatherTemperature(chart!.spreadMax, weather.unit) }}
           </span>
           <span v-if="trend" class="font-semibold text-slate-900">
             {{ trend!.icon }} {{ trend!.label }}
@@ -121,7 +121,7 @@ const trend = computed(() => props.weather ? temperatureTrend(props.weather) : n
           <span v-if="chart!.primaryPoints.length" class="inline-flex items-center gap-1">
             <span class="weather-series-key weather-primary-key" aria-hidden="true" /> {{ weather.sourceLabel }} · carrés
           </span>
-          <span v-if="weather.forecastModels?.length" class="inline-flex flex-wrap items-center gap-2">
+          <span v-if="chart!.modelPaths.length" class="inline-flex flex-wrap items-center gap-2">
             <span v-for="model in chart!.modelPaths" :key="model.id" class="inline-flex items-center gap-1">
               <span class="weather-series-key" :style="{ backgroundImage: model.legend }" aria-hidden="true" /> {{ model.label }}
             </span>

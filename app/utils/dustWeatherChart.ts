@@ -43,11 +43,12 @@ export function buildWeatherChart(snapshot: MarketWeatherSnapshot, markets: Dust
     const minute = weatherLocalMinute(point.timeLocal, snapshot.tz)
     return minute !== null && minute >= dayStart && minute < dayStart + 24 * 60
   }).sort((a, b) => weatherLocalMinute(a.timeLocal, snapshot.tz)! - weatherLocalMinute(b.timeLocal, snapshot.tz)!)
-  const fallbackForecast = basePoints.filter(point => point.kind === 'forecast')
-  const primaryRows: ChartPoint[] = (snapshot.hourly?.length ? snapshot.hourly.slice(0, 12) : fallbackForecast.slice(0, 12))
+  const chartForecasts = snapshot.chartForecasts || snapshot
+  const fallbackForecast: ChartPoint[] = (chartForecasts.sparkline || []).filter(point => point.kind === 'forecast' && Number.isFinite(point.temperature))
+  const primaryRows: ChartPoint[] = (chartForecasts.hourly?.length ? chartForecasts.hourly.slice(0, 12) : fallbackForecast.slice(0, 12))
     .filter(point => Number.isFinite(point.temperature))
     .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: snapshot.sourceLabel, color: '#5b86a4', primary: true }))
-  const modelRows: ChartPoint[] = (snapshot.forecastModels || []).flatMap((model, index) => model.hourly.slice(0, 12)
+  const modelRows: ChartPoint[] = (chartForecasts.forecastModels || []).flatMap((model, index) => model.hourly.slice(0, 12)
     .filter(point => Number.isFinite(point.temperature))
     .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: model.label, color: weatherModelStyle(index).color, modelId: model.id })))
   const forecastRows = [...primaryRows, ...modelRows]
@@ -133,7 +134,7 @@ export function buildWeatherChart(snapshot: MarketWeatherSnapshot, markets: Dust
   const primaryPathPoints = observedPoints.length && primaryPoints.length
     ? [observedPoints.at(-1)!, ...primaryPoints]
     : primaryPoints
-  const modelPaths = (snapshot.forecastModels || []).map((model, index) => {
+  const modelPaths = (chartForecasts.forecastModels || []).map((model, index) => {
     const modelPoints = coords.filter(point => point.modelId === model.id).sort((a, b) => a.x - b.x)
     const linked = observedPoints.length && modelPoints.length ? [observedPoints.at(-1)!, ...modelPoints] : modelPoints
     return { ...model, ...weatherModelStyle(index), path: path(linked), points: modelPoints }
