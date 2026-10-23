@@ -1,6 +1,6 @@
 import type { DustMarket, MarketLink, CityGroup } from '~/types/dust'
 
-const QUICK_LINK_LABELS = ['NWS', 'WETHR', 'WU', 'BM EVENT']
+const QUICK_LINK_LABELS = ['NWS', 'AW', 'WU', 'WETHR', 'BM EVENT']
 
 export function parseMarkdownLinks(raw: string, source: MarketLink['source']): MarketLink[] {
   const links: MarketLink[] = []
@@ -113,9 +113,11 @@ export function getResolutionBadgeForGroup(group: CityGroup) {
 
   const label = provider.includes('wunderground')
     ? 'WU'
-    : provider.includes('weather.gov')
-      ? 'NWS'
-      : 'SOURCE'
+    : provider.includes('aviationweather')
+      ? 'AW'
+      : provider.includes('weather.gov')
+        ? 'NWS'
+        : 'SOURCE'
 
   return {
     label,
