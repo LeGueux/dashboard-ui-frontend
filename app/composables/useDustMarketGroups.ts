@@ -24,7 +24,8 @@ function marketSort(a: DustMarket, b: DustMarket, now: Date | null) {
 export function useDustMarketGroups(
   props: { markets: DustMarket[], weatherSnapshots: Record<string, WeatherSnapshot> },
   hideOnly999Asks: Ref<boolean>,
-  coarseNow: Ref<Date | null>
+  coarseNow: Ref<Date | null>,
+  hideFahrenheit?: Ref<boolean>
 ) {
   // La date de secours ne change qu'à minuit, sans invalider le regroupement toutes les 30 secondes.
   const fallbackDateKey = computed(() => JSON.stringify(Object.fromEntries(props.markets.map((market) => {
@@ -37,6 +38,10 @@ export function useDustMarketGroups(
     const cards = dedupeMarkets(props.markets)
     const filteredCards = cards.filter((market) => {
       if (hideOnly999Asks.value && hasOnly999Asks(market)) return false
+      // L'unité du pari prime ; les métadonnées météo servent de secours si elle manque.
+      const unit = market.groupItemTitle?.match(/°\s*([CF])/i)?.[1]?.toUpperCase()
+        || market.airportData?.unit || props.weatherSnapshots[market.airport || '']?.unit
+      if (hideFahrenheit?.value && unit === 'F') return false
       return true
     })
     const map = new Map<string, CityGroup>()

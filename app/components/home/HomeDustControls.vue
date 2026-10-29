@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const hideOnly999Asks = defineModel<boolean>({ required: true })
+const hideFahrenheit = defineModel<boolean>('hideFahrenheit', { required: true })
 
 const cInput = ref('')
 const fInput = ref('')
@@ -31,11 +32,12 @@ const cFromF = computed(() => {
         </span>
         <UButton
           size="xs"
-          :color="!hideOnly999Asks ? 'primary' : 'neutral'"
-          :variant="!hideOnly999Asks ? 'solid' : 'soft'"
+          :color="!hideOnly999Asks && !hideFahrenheit ? 'primary' : 'neutral'"
+          :variant="!hideOnly999Asks && !hideFahrenheit ? 'solid' : 'soft'"
           title="Affiche tous les marchés disponibles, sans filtre."
           aria-label="Filtre Tous: affiche tous les marchés"
-          @click="hideOnly999Asks = false"
+          :aria-pressed="!hideOnly999Asks && !hideFahrenheit"
+          @click="hideOnly999Asks = false; hideFahrenheit = false"
         >
           Tous
         </UButton>
@@ -49,6 +51,16 @@ const cFromF = computed(() => {
           @click="hideOnly999Asks = !hideOnly999Asks"
         >
           Masquer les asks à 99,9¢
+        </UButton>
+        <UButton
+          size="xs"
+          :color="hideFahrenheit ? 'primary' : 'neutral'"
+          :variant="hideFahrenheit ? 'solid' : 'soft'"
+          title="Masque les villes dont les marchés utilisent les degrés Fahrenheit. Choix mémorisé sur cet appareil."
+          :aria-pressed="hideFahrenheit"
+          @click="hideFahrenheit = !hideFahrenheit"
+        >
+          Masquer les villes en °F
         </UButton>
       </div>
 
@@ -75,6 +87,10 @@ const cFromF = computed(() => {
                 <p class="text-slate-600">
                   <span class="rounded bg-rose-400/15 px-1 py-0.5 text-rose-700">Masquer les asks à 99,9¢</span>:
                   masque les marchés dont tous les asks sont à 99.9¢.
+                </p>
+                <p class="text-slate-600">
+                  <span class="rounded bg-primary/15 px-1 py-0.5 text-primary">Masquer les villes en °F</span>:
+                  masque les villes dont les marchés sont en Fahrenheit. Ce choix est mémorisé sur cet appareil et peut se combiner avec le filtre des asks.
                 </p>
                 <p class="text-slate-600">
                   <span

@@ -12,7 +12,14 @@ const props = withDefaults(defineProps<{
 const { dashboardLayout } = useDashboardLayout()
 const { coarseNow } = provideDustClock()
 const hideOnly999Asks = ref(false)
-const { groups } = useDustMarketGroups(props, hideOnly999Asks, coarseNow)
+// Le cookie conserve le filtre sur cet appareil et l'applique dès le rendu serveur.
+const hideFahrenheit = useCookie<boolean>('dust-hide-fahrenheit', {
+  default: () => false,
+  maxAge: 60 * 60 * 24 * 365,
+  sameSite: 'lax',
+  path: '/'
+})
+const { groups } = useDustMarketGroups(props, hideOnly999Asks, coarseNow, hideFahrenheit)
 // Cet état reste dans l'orchestrateur pour survivre aux changements de présentation.
 
 const collapsed = ref<Set<string>>(new Set())
@@ -30,7 +37,7 @@ function toggleCity(city: string) {
 
 <template>
   <div class="station-board">
-    <HomeDustControls v-model="hideOnly999Asks" />
+    <HomeDustControls v-model="hideOnly999Asks" v-model:hide-fahrenheit="hideFahrenheit" />
 
     <div
       v-if="loading"
@@ -45,7 +52,12 @@ function toggleCity(city: string) {
       class="rounded-sm border border-dashed border-slate-200 bg-slate-50 p-10 text-center text-slate-600"
     >
       <UIcon name="i-lucide-sparkles" class="mx-auto mb-3 size-8 text-emerald-700" />
-      Aucun market dust n'est encore disponible. Le bot Discord devra en envoyer pour alimenter cette vue.
+      <template v-if="markets.length">
+        Aucun marché ne correspond aux filtres sélectionnés. Cliquez sur « Tous » pour les réafficher.
+      </template>
+      <template v-else>
+        Aucun market dust n'est encore disponible. Le bot Discord devra en envoyer pour alimenter cette vue.
+      </template>
     </div>
 
     <div v-if="!loading && groups.length" class="station-overview" :aria-label="dashboardLayout === 'dossiers' ? 'Accéder au dossier d’une ville et d’une date' : 'Aperçu de toutes les villes'">
