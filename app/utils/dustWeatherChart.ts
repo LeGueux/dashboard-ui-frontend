@@ -26,8 +26,16 @@ export function weatherBets(snapshot: WeatherSnapshot, markets: DustMarket[], fo
 // La géométrie dépend uniquement des données et de la largeur, jamais de l’horloge.
 export function buildWeatherChart(snapshot: MarketWeatherSnapshot, markets: DustMarket[], forecasts: WeatherMarketForecast[], chartWidth: number) {
   const bets = weatherBets(snapshot, markets, forecasts)
+  const rangeBets = bets.filter(bet => bet.temperatures.length === 2).map((bet) => {
+    const low = Math.min(...bet.temperatures)
+    const high = Math.max(...bet.temperatures)
+    // Le demi-degré relie visuellement les plages entières en °F ; les seuils métier restent inchangés.
+    const padding = snapshot.unit === 'F' && bet.temperatures.every(Number.isInteger) ? 0.5 : 0
+    return { ...bet, low, high, visualLow: low - padding, visualHigh: high + padding }
+  })
   const chartLeft = 48
-  const chartRight = chartWidth - 14
+  // Une colonne dédiée évite que les libellés des plages recouvrent les courbes.
+  const chartRight = chartWidth - (rangeBets.length ? 132 : 14)
   const plotWidth = chartRight - chartLeft
   const chartTop = 36
   const chartBottom = 268
@@ -53,10 +61,10 @@ export function buildWeatherChart(snapshot: MarketWeatherSnapshot, markets: Dust
     .map(point => ({ ...point, temperature: Number(point.temperature), kind: 'forecast' as const, label: model.label, color: weatherModelStyle(index).color, modelId: model.id })))
   const forecastRows = [...primaryRows, ...modelRows]
   const points = [...observations, ...(forecastRows.length ? forecastRows : fallbackForecast)]
-  const empty = { observed: '', forecast: '', primaryForecast: '', spread: '', modelPaths: [], points: [], observedPoints: [], forecastPoints: [], primaryPoints: [], axisPoints: [], yAxisPoints: [], betLines: [] as { temperature: number, y: number, labelY: number, label: string }[], bets, primaryMax: null as number | null, boundaryX: null, midnightX: null as number | null, afterMidnightX: null as number | null, midnightLabelX: null as number | null, betChartRight: chartRight, peakPoint: null, min: null, middle: null, max: null, consensusMax: null, spreadMax: null, chartWidth, chartLeft, chartRight, labelX: chartLeft - 5 }
+  const empty = { observed: '', forecast: '', primaryForecast: '', spread: '', modelPaths: [], points: [], observedPoints: [], forecastPoints: [], primaryPoints: [], axisPoints: [], yAxisPoints: [], betBands: [] as { id: string, title: string, outcome: string, low: number, high: number, top: number, bottom: number, centerY: number, labelY: number, color: string }[], betLines: [] as { temperature: number, y: number, labelY: number, label: string }[], bets, primaryMax: null as number | null, boundaryX: null, midnightX: null as number | null, afterMidnightX: null as number | null, midnightLabelX: null as number | null, betChartRight: chartRight, peakPoint: null, min: null, middle: null, max: null, consensusMax: null, spreadMax: null, chartWidth, chartLeft, chartRight, labelX: chartLeft - 5 }
   if (points.length < 2) return empty
   // Les seuils participent à l'échelle pour qu'un bet au-dessus du maximum reste visible.
-  const values = [...points.map(point => point.temperature), ...bets.flatMap(bet => bet.temperatures)]
+  const values = [...points.map(point => point.temperature), ...bets.flatMap(bet => bet.temperatures), ...rangeBets.flatMap(bet => [bet.visualLow, bet.visualHigh])]
   const dataMin = Math.min(...values)
   const dataMax = Math.max(...values)
   const baseTemperatureStep = snapshot.unit === 'F' ? 5 : 2
@@ -74,8 +82,20 @@ export function buildWeatherChart(snapshot: MarketWeatherSnapshot, markets: Dust
   const scaleTemperatureY = (temperature: number) => chartBottom - ((temperature - min) / range) * (chartBottom - chartTop)
   const thresholds = new Map<number, string[]>()
   for (const bet of bets) {
+    if (bet.temperatures.length === 2) continue
     for (const temperature of bet.temperatures) thresholds.set(temperature, [...(thresholds.get(temperature) || []), bet.id])
   }
+  // L'alternance suit les plages triées par température, indépendamment de leur issue Yes/No.
+  const bandColors = ['#2563a6', '#ad681b']
+  let previousBandLabelY = chartTop - 24
+  const betBands = rangeBets.map((bet, index) => {
+    return { ...bet, top: scaleTemperatureY(bet.visualHigh), bottom: scaleTemperatureY(bet.visualLow), color: bandColors[index % 2]! }
+  }).reverse().map((band, index) => {
+    const centerY = (band.top + band.bottom) / 2
+    const labelY = Math.max(Math.min(centerY, chartBottom - 10 - (rangeBets.length - index - 1) * 24), previousBandLabelY + 24)
+    previousBandLabelY = labelY
+    return { ...band, centerY, labelY }
+  })
   let previousLabelY = chartTop - 20
   const betLines = [...thresholds].sort(([a], [b]) => b - a).map(([temperature, ids], index) => {
     const y = scaleTemperatureY(temperature)
@@ -168,6 +188,7 @@ export function buildWeatherChart(snapshot: MarketWeatherSnapshot, markets: Dust
     primaryPoints,
     primaryMax: dailyPrimaryPoints.length ? Math.max(...dailyPrimaryPoints.map(point => point.temperature)) : null,
     bets,
+    betBands: betChartRight > chartLeft ? betBands : [],
     betLines: betChartRight > chartLeft ? betLines : [],
     axisPoints,
     yAxisPoints,

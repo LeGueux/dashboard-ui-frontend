@@ -128,7 +128,8 @@ const trend = computed(() => props.weather ? temperatureTrend(props.weather) : n
             <span class="inline-flex items-center gap-1"><span class="weather-series-key weather-consensus-key" aria-hidden="true" /> Moyenne modèles</span>
           </span>
         </div>
-        <span v-if="chart!.bets.length" class="inline-flex items-center gap-1"><span class="weather-series-key weather-bet-key" aria-hidden="true" /> Seuils bets</span>
+        <span v-if="chart!.betLines.length" class="inline-flex items-center gap-1"><span class="weather-series-key weather-bet-key" aria-hidden="true" /> Seuils bets</span>
+        <span v-if="chart!.betBands.length" class="inline-flex items-center gap-1"><span class="inline-block h-2.5 w-5 border border-[#2563a6]/50 bg-[#2563a6]/15" aria-hidden="true" /><span class="inline-block h-2.5 w-5 border border-[#ad681b]/50 bg-[#ad681b]/15" aria-hidden="true" /> Plages bets</span>
         <span v-if="forecast" class="min-w-0 truncate" :title="forecast!.reason">{{ weatherForecastLabel(forecast!) }}</span>
       </div>
       <div v-if="chart!.bets.length" class="bet-distances border-t border-slate-200 px-1 py-2 text-[10px] text-slate-700">

@@ -23,6 +23,7 @@ export interface WeatherChartGeometry {
   axisPoints: Array<{ x: number, timeLocal: string, label?: string | null }>
   yAxisPoints: Array<{ value: number, y: number }>
   betLines: Array<{ temperature: number, y: number, labelY: number, label: string }>
+  betBands: Array<{ id: string, title: string, outcome: string, low: number, high: number, top: number, bottom: number, centerY: number, labelY: number, color: string }>
   betChartRight: number
   boundaryX: number | null
   midnightX: number | null

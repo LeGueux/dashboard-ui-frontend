@@ -130,6 +130,39 @@ onBeforeUnmount(() => resizeObserver?.disconnect())
         class="font-semibold"
       >Minuit · fin du bet</text>
     </g>
+    <g
+      v-for="band in chart.betBands"
+      :key="band.id"
+      class="bet-range"
+      :style="{ color: band.color }"
+    >
+      <title>{{ band.id }} · {{ band.outcome }} · {{ band.title }}</title>
+      <rect
+        :x="chart.chartLeft"
+        :y="band.top"
+        :width="chart.betChartRight - chart.chartLeft"
+        :height="band.bottom - band.top"
+        fill="currentColor"
+        fill-opacity="0.16"
+        stroke="currentColor"
+        stroke-opacity="0.45"
+        stroke-width="0.75"
+      />
+      <path
+        :d="`M ${chart.betChartRight} ${band.centerY} L ${chart.chartRight + 4} ${band.centerY} L ${chart.chartRight + 12} ${band.labelY}`"
+        fill="none"
+        stroke="currentColor"
+        stroke-opacity="0.65"
+        stroke-width="1"
+      />
+      <text
+        :x="chart.chartRight + 18"
+        :y="band.labelY + 4"
+        :style="{ color: band.color }"
+        fill="currentColor"
+        class="weather-axis-label font-semibold"
+      >{{ band.id }} · {{ Math.round(band.low * 10) / 10 }}–{{ weatherTemperature(band.high) }}</text>
+    </g>
     <g v-for="bet in chart.betLines" :key="bet.temperature" class="bet-threshold">
       <title>{{ bet.label }} · {{ weatherTemperature(bet.temperature) }}</title>
       <line
